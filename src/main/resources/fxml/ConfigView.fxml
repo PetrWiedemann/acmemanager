@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="10.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.pdynet.acmemanager.controller.ConfigViewController">
+    <children>
+        <Label text="System Configuration">
+            <font><Font name="System Bold" size="22.0" /></font>
+        </Label>
+        
+        <TableView fx:id="tableConfig" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colId" prefWidth="250.0" text="Configuration Key (ID)" />
+                <TableColumn fx:id="colInt" prefWidth="100.0" text="Integer Value" />
+                <TableColumn fx:id="colText" prefWidth="350.0" text="Text Value" />
+            </columns>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
+        </TableView>
+
+        <Separator />
+
+        <Label text="Editor">
+            <font><Font name="System Bold" size="14.0" /></font>
+        </Label>
+        
+        <GridPane hgap="10.0" vgap="10.0">
+            <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="120.0" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" />
+            </columnConstraints>
+            <children>
+                <Label text="Key (ID):" />
+                <TextField fx:id="txtId" promptText="Enter unique key" GridPane.columnIndex="1" />
+                
+                <Label text="Integer Value:" GridPane.rowIndex="1" />
+                <TextField fx:id="txtIntVal" promptText="Numbers only" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                
+                <Label text="Text Value:" GridPane.rowIndex="2" />
+                <TextField fx:id="txtTextVal" promptText="Enter value string" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            </children>
+        </GridPane>
+
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Button onAction="#handleNew" prefHeight="35.0" text="Clear / New" />
+                <HBox HBox.hgrow="ALWAYS" />
+                <Button fx:id="btnDelete" disable="true" onAction="#handleDelete" prefHeight="35.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white;" text="Delete Selected" />
+                <Button onAction="#handleSave" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #27ae60; -fx-text-fill: white;" text="Save" />
+            </children>
+            <VBox.margin>
+                <Insets top="5.0" />
+            </VBox.margin>
+        </HBox>
+    </children>
+    <padding>
+        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+    </padding>
+</VBox>

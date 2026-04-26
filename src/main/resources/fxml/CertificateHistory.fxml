@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="500.0" prefWidth="850.0" spacing="15.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.pdynet.acmemanager.controller.CertificateHistoryController">
+    <children>
+        <Label text="Certificate Issuance History">
+            <font>
+                <Font name="System Bold" size="18.0" />
+            </font>
+        </Label>
+        <TableView fx:id="tableHistory" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colDate" prefWidth="150.0" text="Request Date" />
+                <TableColumn fx:id="colStatus" prefWidth="120.0" text="Status" />
+                <TableColumn fx:id="colSerial" prefWidth="200.0" text="Serial Number" />
+                <TableColumn fx:id="colExpiry" prefWidth="150.0" text="Valid Until" />                
+            </columns>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
+        </TableView>
+        <HBox alignment="CENTER_RIGHT" minHeight="-Infinity" prefHeight="35.0" spacing="10.0">
+            <children>
+                <Button fx:id="btnDelete" disable="true" onAction="#handleDelete" prefHeight="35.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white;" text="Delete Record" />
+                <Separator orientation="VERTICAL" />
+                <Button fx:id="btnExport" disable="true" onAction="#handleExport" prefHeight="35.0" style="-fx-background-color: #2980b9; -fx-text-fill: white;" text="Export PEM Files..." />
+                <Button onAction="#handleClose" prefHeight="35.0" text="Close" />
+            </children>
+        </HBox>
+    </children>
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+</VBox>

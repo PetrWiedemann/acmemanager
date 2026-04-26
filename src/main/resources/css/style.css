@@ -1,0 +1,22 @@
+/* Základní styl pro navigaèní tlaèítka v postranním panelu */
+.sidebar-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #bdc3c7;
+    -fx-font-size: 14px;
+    -fx-alignment: BASELINE_LEFT;
+    -fx-padding: 10 15 10 15;
+    -fx-cursor: hand;
+}
+
+/* Efekt pøi pøejetí myší (zesvìtlení) */
+.sidebar-btn:hover {
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;
+}
+
+/* Styl pro právì vybranou sekci (modré pozadí, tuèný text) */
+.sidebar-btn-active {
+    -fx-background-color: #2980b9;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}

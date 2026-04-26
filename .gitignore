@@ -1,0 +1,17 @@
+target/
+
+.settings/
+.project
+.classpath
+
+logs/
+*.log
+*.log.gz
+
+db/
+*.key
+*.mv.db
+*.trace.db
+
+.DS_Store
+Thumbs.db

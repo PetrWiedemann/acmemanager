@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="10.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.pdynet.acmemanager.controller.CertificatesViewController">
+   <children>
+      <HBox alignment="CENTER_LEFT" spacing="10.0">
+         <children>
+            <Label text="Certificate Definitions"><font><Font name="System Bold" size="22.0" /></font></Label>
+            <HBox HBox.hgrow="ALWAYS" />
+            <Button fx:id="btnDelete" disable="true" onAction="#handleDelete" prefHeight="35.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white;" text="Delete" />
+            <Button fx:id="btnHistory" disable="true" onAction="#handleHistory" prefHeight="35.0" style="-fx-background-color: #3498db; -fx-text-fill: white;" text="History" />
+            <Button fx:id="btnFetch" disable="true" mnemonicParsing="false" onAction="#handleFetch" prefHeight="35.0" style="-fx-background-color: #8e44ad; -fx-text-fill: white;" text="Fetch Certificate" />
+            <Button fx:id="btnEdit" disable="true" onAction="#handleEdit" prefHeight="35.0" style="-fx-background-color: #f39c12; -fx-text-fill: white;" text="Edit Selected" />
+            <Separator orientation="VERTICAL" />
+            <Button onAction="#handleNew" prefHeight="35.0" style="-fx-background-color: #27ae60; -fx-text-fill: white;" text="+ New Certificate" />
+         </children>
+      </HBox>
+      <TableView fx:id="certTable" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="colName" text="Name" prefWidth="200" />
+            <TableColumn fx:id="colDomain" text="Domain" prefWidth="250" />
+            <TableColumn fx:id="colAlgorithm" prefWidth="150.0" text="Algorithm" />
+            <TableColumn fx:id="colAutoRenew" prefWidth="100.0" text="Auto Renew" />
+            <TableColumn fx:id="colExpiry" text="Expiry Date" prefWidth="180" />
+         </columns>
+         <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+      </TableView>
+   </children>
+   <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+</VBox>
