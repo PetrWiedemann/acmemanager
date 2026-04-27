@@ -123,4 +123,4 @@ INSERT INTO dns_services(id, name) VALUES (1, 'Active24');
 INSERT INTO dns_services(id, name) VALUES (2, 'RegZone');
 INSERT INTO dns_services(id, name) VALUES (3, 'TSIG (RFC 2136 - Dynamic DNS Updates)');
 
-INSERT INTO config(id, int_val, text_val) VALUES ('dns_propagation_delay', 5, '');
+INSERT INTO config(id, int_val, text_val) VALUES ('dns_propagation_delay', 15, '');

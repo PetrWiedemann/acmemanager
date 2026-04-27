@@ -270,11 +270,15 @@ public class DnsChallengeProcessor {
 					}
 				}
 			}
-		} catch (NoSuchDomainException e) {
-			// Záznam ještě neexistuje - pro nás běžný stav při čekání
-			return false;
+		} catch (java.util.concurrent.ExecutionException e) {
+			Throwable cause = e.getCause();
+			if (cause instanceof NoSuchDomainException) {
+				logger.info("DNS record not found yet (NXDOMAIN). Waiting for propagation...");
+			} else {
+				logger.warn("DNS lookup failed: {}", cause.getMessage());
+			}
 		} catch (Exception e) {
-			logger.error("DNS lookup error", e);
+			logger.error("Unexpected error during DNS lookup", e);
 		}
 		
 		return false;
