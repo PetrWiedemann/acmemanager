@@ -15,7 +15,7 @@ import net.pdynet.acmemanager.dao.ConfigDao;
 
 public class DatabaseMigrator {
 	private final Jdbi jdbi;
-	private static final int CURRENT_APP_SCHEMA_VERSION = 1;
+	private static final int CURRENT_APP_SCHEMA_VERSION = 2;
 	
 	public DatabaseMigrator(Jdbi jdbi) {
 		this.jdbi = jdbi;

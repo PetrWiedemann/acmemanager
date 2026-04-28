@@ -1,6 +1,7 @@
 package net.pdynet.acmemanager.service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -66,6 +67,7 @@ import net.pdynet.acmemanager.service.dns.DnsManager;
 import net.pdynet.acmemanager.service.dns.DnsManagerFactory;
 import net.pdynet.acmemanager.util.ApiClientUtils;
 import net.pdynet.acmemanager.util.BlindTrustManager;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 public class CertificateIssuanceService {
@@ -235,7 +237,17 @@ public class CertificateIssuanceService {
 			String pkPem = issuedCertificate.getPrivateKeyPem().value();
 			exportToFile(definition.getExportPathKey(), pkPem, "Private Key");
 		}
+		
+		// Post-Processing: Export do JKS
+		if (definition.isAutoExportJks() && StringUtils.isNotBlank(definition.getExportPathJks())) {
+			exportToJks(definition, cert, chain, privateKey);
+		}
 
+		// Post-Processing: Odeslání na webhook
+		if (definition.isSendToWebhook() && StringUtils.isNotBlank(definition.getWebhookUrl())) {
+			sendWebhook(definition, cert, chain, privateKey);
+		}
+		
 		// Post-Processing: Spuštění externího skriptu
 		if (definition.isRunScript() && definition.getScriptPath() != null && !definition.getScriptPath().isBlank()) {
 			try {
@@ -257,18 +269,13 @@ public class CertificateIssuanceService {
 			}
 		}
 		
-		// Post-Processing: Odeslání na webhook
-		if (definition.isSendToWebhook() && StringUtils.isNotBlank(definition.getWebhookUrl())) {
-			sendWebhook(definition, cert, chain, privateKey);
-		}
-
 		logger.info("Successfully issued certificate for definition ID: " + definitionId);
 		
 		// Post-Processing: Smazání starých záznamů
 		cleanupOldRecords(definition.getId());
 	}
 
-	public void exportToFile(String path, String content, String label) {
+	private void exportToFile(String path, String content, String label) {
 		if (path == null || path.isBlank() || content == null || content.isBlank())
 			return;
 		
@@ -283,7 +290,39 @@ public class CertificateIssuanceService {
 		}
 	}
 	
-	public void sendWebhook(CertificateDefinition definition, X509Certificate cert, List<X509Certificate> chain, PrivateKey privateKey) {
+	private void exportToJks(CertificateDefinition definition, X509Certificate cert, List<X509Certificate> chain, PrivateKey privateKey) {
+		if (!definition.isAutoExportJks() || StringUtils.isBlank(definition.getExportPathJks())) {
+			return;
+		}
+
+		try {
+			KeyStore ks = KeyStore.getInstance("JKS");
+			ks.load(null, null);
+
+			Set<java.security.cert.Certificate> chainList = new LinkedHashSet<>();
+			chainList.add(cert);
+			
+			if (chain != null && chain.size() > 0) {
+				chain.forEach(c -> chainList.add(c));
+			}
+			
+			String password = (definition.getJksPassword() != null) ? definition.getJksPassword().value() : "";
+			char[] passwordChars = password.toCharArray();
+	        
+			ks.setKeyEntry("main", privateKey, passwordChars, chainList.toArray(new java.security.cert.Certificate[0]));
+			
+			Path saveTo = Paths.get(definition.getExportPathJks());
+			try (OutputStream fos = Files.newOutputStream(saveTo)) {
+				ks.store(fos, password.toCharArray());
+			}
+
+			logger.info("Certificate successfully exported to JKS: {}", definition.getExportPathJks());
+		} catch (Exception e) {
+			logger.error("Failed to export JKS for " + definition.getDomainName(), e);
+		}
+	}
+	
+	private void sendWebhook(CertificateDefinition definition, X509Certificate cert, List<X509Certificate> chain, PrivateKey privateKey) {
 		if (!definition.isSendToWebhook() || StringUtils.isBlank(definition.getWebhookUrl()))
 			return;
 
@@ -306,7 +345,7 @@ public class CertificateIssuanceService {
 			char[] passwordChars = password.toCharArray();
 
 			// Uložení klíče a chainu do P12
-			p12Store.setKeyEntry(definition.getDomainName(), privateKey, passwordChars, chainList.toArray(new java.security.cert.Certificate[0]));
+			p12Store.setKeyEntry("main", privateKey, passwordChars, chainList.toArray(new java.security.cert.Certificate[0]));
 
 			// Export P12 do byte array
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -314,10 +353,51 @@ public class CertificateIssuanceService {
 			byte[] p12Bytes = bos.toByteArray();
 			
 			// Příprava JSON dat
+			String hexSerial = cert.getSerialNumber().toString(16).toUpperCase();
+			
+			String fingerprint = "";
+			try {
+				byte[] encoded = cert.getEncoded();
+				java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+				byte[] digest = md.digest(encoded);
+				StringBuilder sb = new StringBuilder();
+				for (byte b : digest) sb.append(String.format("%02X", b));
+				fingerprint = sb.toString();
+			} catch (Exception e) {}
+			
+			List<String> sans = new ArrayList<>();
+			try {
+				var altNames = cert.getSubjectAlternativeNames();
+				if (altNames != null) {
+					for (List<?> entry : altNames) {
+						sans.add(entry.get(1).toString());
+					}
+				}
+			} catch (Exception e) {}
+			
+			String keyAlg = privateKey.getAlgorithm(); // RSA nebo EC
+			int keySize = 0;
+			if (privateKey instanceof java.security.interfaces.RSAPrivateKey rsa) {
+				keySize = rsa.getModulus().bitLength();
+			} else if (privateKey instanceof java.security.interfaces.ECPrivateKey ec) {
+				keySize = ec.getParams().getOrder().bitLength();
+			}
+			
 			ObjectNode jsonPayload = ApiClientUtils.getObjectMapper().createObjectNode()
 					.put("id", definition.getWebhookPayloadId())
 					.put("cert", Base64.getEncoder().encodeToString(p12Bytes))
+					.put("serial", hexSerial)
+					.put("subject", cert.getSubjectX500Principal().getName())
+					.put("issuer", cert.getIssuerX500Principal().getName())
+					.put("notBefore", cert.getNotBefore().toInstant().toString())
+					.put("notAfter", cert.getNotAfter().toInstant().toString())
+					.put("fingerprintSha256", fingerprint)
+					.put("keyAlgorithm", keyAlg)
+					.put("keySize", keySize)
 					;
+			
+			ArrayNode sansArray = jsonPayload.putArray("sans");
+			sans.forEach(sansArray::add);
 			
 			// Odeslání pomocí HttpClient
 			HttpClient.Builder clientBuilder = HttpClient.newBuilder();

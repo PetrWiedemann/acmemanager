@@ -78,8 +78,22 @@
                </children>
             </VBox>
 
-            <CheckBox fx:id="chbRunScript" text="Run script after success:" GridPane.rowIndex="9" />
-            <TextField fx:id="txtScriptPath" promptText="e.g. /usr/local/bin/reload_nginx.sh" GridPane.columnIndex="1" GridPane.rowIndex="9" />            
+            <CheckBox fx:id="chbExportJks" text="Auto export to JKS" GridPane.rowIndex="9" />
+
+            <Label text="JKS Export Path:" GridPane.rowIndex="10" />
+            <TextField fx:id="txtExportPathJks" promptText="/home/user/app/cert.jks" GridPane.columnIndex="1" GridPane.rowIndex="10" />
+
+            <Label text="JKS Password:" GridPane.rowIndex="11" />
+            <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="11">
+                <StackPane HBox.hgrow="ALWAYS">
+                    <PasswordField fx:id="passJks" />
+                    <TextField fx:id="txtJksVisible" visible="false" />
+                </StackPane>
+                <ToggleButton fx:id="btnShowJks" onAction="#togglePasswordVisibility" text="👁" />
+            </HBox>
+
+            <CheckBox fx:id="chbRunScript" text="Run script after success:" GridPane.rowIndex="12" />
+            <TextField fx:id="txtScriptPath" promptText="e.g. /usr/local/bin/reload_nginx.sh" GridPane.columnIndex="1" GridPane.rowIndex="12" />            
          </children>
       </GridPane>
       
@@ -101,7 +115,13 @@
 		                <TextField fx:id="txtWebhookPayloadId" promptText="JSON payload ID value" GridPane.columnIndex="1" GridPane.rowIndex="2" />
 		                
 		                <Label text="P12 Password:" GridPane.rowIndex="3" />
-		                <PasswordField fx:id="passWebhookPassword" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+		                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="3">
+		                    <StackPane HBox.hgrow="ALWAYS">
+		                        <PasswordField fx:id="passWebhookPassword" />
+		                        <TextField fx:id="txtWebhookPasswordVisible" visible="false" />
+		                    </StackPane>
+		                    <ToggleButton fx:id="btnShowWebhookPass" onAction="#togglePasswordVisibility" text="👁" />
+		                </HBox>		                
 		                
 		                <CheckBox fx:id="chbWebhookTrustAll" text="Bypass SSL verification for webhook" GridPane.rowIndex="4" GridPane.columnIndex="1" />
 		            </children>

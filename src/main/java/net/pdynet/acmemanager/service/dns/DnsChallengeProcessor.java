@@ -3,19 +3,11 @@ package net.pdynet.acmemanager.service.dns;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import javax.naming.Context;
-import javax.naming.NamingException;
-import javax.naming.directory.Attribute;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.DirContext;
-import javax.naming.directory.InitialDirContext;
 
 import org.apache.commons.lang3.Strings;
 import org.shredzone.acme4j.Authorization;
@@ -215,37 +207,6 @@ public class DnsChallengeProcessor {
 		}, 30, TimeUnit.SECONDS);
 	}
 
-	public boolean isTxtRecordPropagatedOld(final String recordName, final String expectedValue, final String dnsServer, final int attempt) {
-		logger.info("Verifying DNS record {} at server {}. Attempt number {}", recordName, dnsServer == null ? "[SYSTEM]" : dnsServer, attempt + 1);
-		
-		Hashtable<String, String> env = new Hashtable<>();
-		env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.dns.DnsContextFactory");
-
-		if (dnsServer != null)
-			env.put(Context.PROVIDER_URL, "dns://" + dnsServer);
-
-		try {
-			DirContext ctx = new InitialDirContext(env);
-			Attributes attrs = ctx.getAttributes(recordName, new String[] { "TXT" });
-			Attribute txt = attrs.get("TXT");
-
-			if (txt != null) {
-				for (int i = 0; i < txt.size(); i++) {
-					String value = (String) txt.get(i);
-
-					String cleanValue = value.replace("\"", "");
-					if (expectedValue.equals(cleanValue)) {
-						return true;
-					}
-				}
-			}
-		} catch (NamingException e) {
-			return false;
-		}
-
-		return false;
-	}
-	
 	public boolean isTxtRecordPropagated(final String recordName, final String expectedValue, final String dnsServer, final int attempt) {
 		logger.info("Verifying DNS record {} at server {}. Attempt number {}", recordName, dnsServer == null ? "[SYSTEM]" : dnsServer, attempt + 1);
 		

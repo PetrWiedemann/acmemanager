@@ -18,12 +18,14 @@ public interface CertificateDefinitionDao {
 			+ " key_algorithm, key_size_or_curve, auto_renew, days_before_expiry_to_renew, date_write, date_edit,"
 			+ " auto_export, export_path_cert, export_path_chain, export_path_key,"
 			+ " run_script, script_path,"
+			+ " auto_export_jks, export_path_jks, jks_password,"
 			+ " send_to_webhook, webhook_url, webhook_headers, webhook_trust_all, webhook_password, webhook_payload_id) "
 			+ "VALUES ("
 			+ " :name, :domainName, :subjectAltNames, :acmeRegistrationId, :dnsProviderId,"
 			+ " :keyAlgorithm, :keySizeOrCurve, :autoRenew, :daysBeforeExpiryToRenew, :dateWrite, :dateEdit,"
 			+ " :autoExport, :exportPathCert, :exportPathChain, :exportPathKey,"
 			+ " :runScript, :scriptPath,"
+			+ " :autoExportJks, :exportPathJks, :jksPassword,"
 			+ " :sendToWebhook, :webhookUrl, :webhookHeaders, :webhookTrustAll, :webhookPassword, :webhookPayloadId)")
 	@GetGeneratedKeys
 	int insert(@BindBean CertificateDefinition definition);
@@ -50,6 +52,7 @@ public interface CertificateDefinitionDao {
 			+ " date_edit = :dateEdit, auto_export = :autoExport, export_path_cert = :exportPathCert,"
 			+ " export_path_chain = :exportPathChain, export_path_key = :exportPathKey,"
 			+ " run_script = :runScript, script_path = :scriptPath,"
+			+ " auto_export_jks = :autoExportJks, export_path_jks = :exportPathJks, jks_password = :jksPassword,"
 			+ " send_to_webhook = :sendToWebhook, webhook_url = :webhookUrl, webhook_headers = :webhookHeaders,"
 			+ " webhook_trust_all = :webhookTrustAll, webhook_password = :webhookPassword, webhook_payload_id = :webhookPayloadId"
 			+ " WHERE id = :id")

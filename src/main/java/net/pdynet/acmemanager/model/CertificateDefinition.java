@@ -73,6 +73,15 @@ public class CertificateDefinition {
 	@ColumnName("webhook_password")
 	private EncryptedString webhookPassword;
 	
+	@ColumnName("auto_export_jks")
+	private boolean autoExportJks;
+	
+	@ColumnName("export_path_jks")
+	private String exportPathJks;
+	
+	@ColumnName("jks_password")
+	private EncryptedString jksPassword;
+	
 	/**
 	 * @return the id
 	 */
@@ -409,6 +418,48 @@ public class CertificateDefinition {
 		this.webhookPayloadId = webhookPayloadId;
 	}
 
+	/**
+	 * @return the autoExportJks
+	 */
+	public boolean isAutoExportJks() {
+		return autoExportJks;
+	}
+
+	/**
+	 * @param autoExportJks the autoExportJks to set
+	 */
+	public void setAutoExportJks(boolean autoExportJks) {
+		this.autoExportJks = autoExportJks;
+	}
+
+	/**
+	 * @return the exportPathJks
+	 */
+	public String getExportPathJks() {
+		return exportPathJks;
+	}
+
+	/**
+	 * @param exportPathJks the exportPathJks to set
+	 */
+	public void setExportPathJks(String exportPathJks) {
+		this.exportPathJks = exportPathJks;
+	}
+
+	/**
+	 * @return the jksPassword
+	 */
+	public EncryptedString getJksPassword() {
+		return jksPassword;
+	}
+
+	/**
+	 * @param jksPassword the jksPassword to set
+	 */
+	public void setJksPassword(EncryptedString jksPassword) {
+		this.jksPassword = jksPassword;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -424,7 +475,9 @@ public class CertificateDefinition {
 				.append(", sendToWebhook=").append(sendToWebhook).append(", webhookUrl=").append(webhookUrl)
 				.append(", webhookHeaders=").append(webhookHeaders).append(", webhookPayloadId=")
 				.append(webhookPayloadId).append(", webhookTrustAll=").append(webhookTrustAll)
-				.append(", webhookPassword=").append(webhookPassword).append("]");
+				.append(", webhookPassword=").append(webhookPassword).append(", autoExportJks=").append(autoExportJks)
+				.append(", exportPathJks=").append(exportPathJks).append(", jksPassword=").append(jksPassword)
+				.append("]");
 		return builder.toString();
 	}
 }

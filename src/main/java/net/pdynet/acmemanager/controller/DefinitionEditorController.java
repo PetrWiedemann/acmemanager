@@ -6,15 +6,18 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
 import javafx.collections.FXCollections;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 import net.pdynet.acmemanager.App;
@@ -47,13 +50,26 @@ public class DefinitionEditorController {
 	@FXML
 	private CheckBox chbAutoExport, chbRunScript, chbSendToWebhook, chbWebhookTrustAll;
 	@FXML
-	private TextField txtExportPathCert, txtExportPathChain, txtExportPathKey, txtScriptPath, txtWebhookUrl, passWebhookPassword, txtWebhookPayloadId;
+	private TextField txtExportPathCert, txtExportPathChain, txtExportPathKey, txtScriptPath, txtWebhookUrl, txtWebhookPayloadId;
 
+	@FXML
+	private CheckBox chbExportJks;
+	@FXML
+	private TextField txtExportPathJks, txtJksVisible, txtWebhookPasswordVisible;
+	@FXML
+	private PasswordField passJks, passWebhookPassword;
+	@FXML
+	private ToggleButton btnShowJks, btnShowWebhookPass;	
+	
 	private CertificateDefinition definition;
 	private boolean saveClicked = false;
 
 	@FXML
 	public void initialize() {
+		// Synchronizace textu mezi PasswordField a TextField
+		txtJksVisible.textProperty().bindBidirectional(passJks.textProperty());
+		txtWebhookPasswordVisible.textProperty().bindBidirectional(passWebhookPassword.textProperty());
+		
 		// Inicializace Spinneru (1-90 dní, default 10)
 		spnRenewDays.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 90, 10));
 
@@ -67,9 +83,15 @@ public class DefinitionEditorController {
 		txtExportPathChain.disableProperty().bind(chbAutoExport.selectedProperty().not());
 		txtExportPathKey.disableProperty().bind(chbAutoExport.selectedProperty().not());
 		
+		txtExportPathJks.disableProperty().bind(chbExportJks.selectedProperty().not());
+		passJks.disableProperty().bind(chbExportJks.selectedProperty().not());
+		
 		txtWebhookUrl.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
 		txtWebhookHeaders.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
 		passWebhookPassword.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
+		txtWebhookPasswordVisible.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
+		btnShowWebhookPass.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
+		
 		txtWebhookPayloadId.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
 		
 		txtScriptPath.disableProperty().bind(chbRunScript.selectedProperty().not());
@@ -141,6 +163,10 @@ public class DefinitionEditorController {
 			txtExportPathChain.setText(def.getExportPathChain());
 			txtExportPathKey.setText(def.getExportPathKey());
 			
+			chbExportJks.setSelected(def.isAutoExportJks());
+			txtExportPathJks.setText(def.getExportPathJks());
+			passJks.setText(def.getJksPassword() != null ? def.getJksPassword().value() : "");
+			
 			chbRunScript.setSelected(def.isRunScript());
 			txtScriptPath.setText(def.getScriptPath());
 			
@@ -180,6 +206,9 @@ public class DefinitionEditorController {
 			definition.setWebhookHeaders(txtWebhookHeaders.getText());
 			definition.setWebhookPayloadId(StringUtils.trimToEmpty(txtWebhookPayloadId.getText()));
 			definition.setWebhookPassword(new EncryptedString(passWebhookPassword.getText()));
+			definition.setAutoExportJks(chbExportJks.isSelected());
+			definition.setExportPathJks(txtExportPathJks.getText());
+			definition.setJksPassword(new EncryptedString(passJks.getText()));
             
 			CertificateDefinitionDao dao = App.getJdbi().onDemand(CertificateDefinitionDao.class);
 			if (definition.getId() == 0) {
@@ -199,6 +228,28 @@ public class DefinitionEditorController {
 		((Stage) txtName.getScene().getWindow()).close();
 	}
 
+	@FXML
+	private void togglePasswordVisibility(ActionEvent event) {
+		ToggleButton btn = (ToggleButton) event.getSource();
+		if (btn == btnShowJks) {
+			syncPassFields(passJks, txtJksVisible, btn.isSelected());
+		} else if (btn == btnShowWebhookPass) {
+			syncPassFields(passWebhookPassword, txtWebhookPasswordVisible, btn.isSelected());
+		}
+	}
+	
+	private void syncPassFields(PasswordField pass, TextField txt, boolean show) {
+		if (show) {
+			txt.setText(pass.getText());
+			txt.setVisible(true);
+			pass.setVisible(false);
+		} else {
+			pass.setText(txt.getText());
+			pass.setVisible(true);
+			txt.setVisible(false);
+		}
+	}
+	
 	private boolean validateInput() {
 		if (txtName.getText().isBlank() || txtDomain.getText().isBlank() || cbAcme.getValue() == null
 				|| cbDns.getValue() == null) {
