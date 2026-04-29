@@ -84,7 +84,9 @@ public class DefinitionEditorController {
 		txtExportPathKey.disableProperty().bind(chbAutoExport.selectedProperty().not());
 		
 		txtExportPathJks.disableProperty().bind(chbExportJks.selectedProperty().not());
+		txtJksVisible.disableProperty().bind(chbExportJks.selectedProperty().not());
 		passJks.disableProperty().bind(chbExportJks.selectedProperty().not());
+		btnShowJks.disableProperty().bind(chbExportJks.selectedProperty().not());
 		
 		txtWebhookUrl.disableProperty().bind(chbSendToWebhook.selectedProperty().not());
 		txtWebhookHeaders.disableProperty().bind(chbSendToWebhook.selectedProperty().not());

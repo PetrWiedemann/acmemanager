@@ -22,6 +22,7 @@
           <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
           <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+          <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
         </rowConstraints>
          <children>
             <Label text="Friendly Name:" />
@@ -30,11 +31,14 @@
             <Label text="Directory URL:" GridPane.rowIndex="1" />
             <TextField fx:id="txtUrl" promptText="acme://letsencrypt.org" GridPane.rowIndex="1" GridPane.columnIndex="1" />
             
-            <Label text="Contact Email:" GridPane.rowIndex="2" />
-            <TextField fx:id="txtEmail" promptText="admin@example.com" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            <Label fx:id="lblAccountUrl" text="Account URL:" GridPane.rowIndex="2" />
+            <TextField fx:id="txtAccountUrl" editable="false" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            
+            <Label text="Contact Email:" GridPane.rowIndex="3" />
+            <TextField fx:id="txtEmail" promptText="admin@example.com" GridPane.rowIndex="3" GridPane.columnIndex="1" />
 
-            <Label text="Security:" GridPane.rowIndex="3" />
-            <CheckBox fx:id="chbTrustAll" text="Trust all certificates (Bypass SSL validation)" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+            <Label text="Security:" GridPane.rowIndex="4" />
+            <CheckBox fx:id="chbTrustAll" text="Trust all certificates (Bypass SSL validation)" GridPane.rowIndex="4" GridPane.columnIndex="1" />
          </children>
       </GridPane>
       <Separator />

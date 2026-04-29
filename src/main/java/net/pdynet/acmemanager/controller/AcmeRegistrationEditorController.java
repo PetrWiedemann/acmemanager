@@ -33,15 +33,25 @@ public class AcmeRegistrationEditorController {
 	private static final Logger logger = LoggerFactory.getLogger(AcmeRegistrationEditorController.class);
 
 	@FXML
-	private TextField txtName, txtUrl, txtEmail;
+	private TextField txtName, txtUrl, txtEmail, txtAccountUrl;
 	@FXML
 	private CheckBox chbTrustAll;
 	@FXML
 	private Button btnSave;
-
+	@FXML
+	private Label lblAccountUrl;
+	
 	private AcmeRegistration registration;
 	private boolean saved = false;
 
+	@FXML
+	public void initialize() {
+		lblAccountUrl.setVisible(false);
+		lblAccountUrl.setManaged(false);
+		txtAccountUrl.setVisible(false);
+		txtAccountUrl.setManaged(false);
+	}
+	
 	public void setRegistration(AcmeRegistration reg) {
 		this.registration = reg;
 		if (reg != null) {
@@ -50,8 +60,15 @@ public class AcmeRegistrationEditorController {
 			txtEmail.setText(reg.getEmail());
 			chbTrustAll.setSelected(reg.isTrustAllCertificates());
 			
-			txtUrl.setDisable(true); // Klíčové údaje při přejmenování neměníme
-			txtEmail.setDisable(true);
+			lblAccountUrl.setVisible(true);
+			lblAccountUrl.setManaged(true);
+			txtAccountUrl.setVisible(true);
+			txtAccountUrl.setManaged(true);
+			txtAccountUrl.setText(reg.getAccountUrl());
+			
+			txtUrl.setEditable(false);
+			txtEmail.setEditable(false);
+			
 			btnSave.setText("Save");
 			btnSave.setPrefWidth(80);
 		}
