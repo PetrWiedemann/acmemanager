@@ -60,17 +60,18 @@ public class AcmeRegistrationEditorController {
 			txtEmail.setText(reg.getEmail());
 			chbTrustAll.setSelected(reg.isTrustAllCertificates());
 			
-			lblAccountUrl.setVisible(true);
-			lblAccountUrl.setManaged(true);
-			txtAccountUrl.setVisible(true);
-			txtAccountUrl.setManaged(true);
 			txtAccountUrl.setText(reg.getAccountUrl());
+			showAccountUrl();
 			
 			txtUrl.setEditable(false);
+			txtUrl.setStyle("-fx-background-color: #eeeeee;");
 			txtEmail.setEditable(false);
+			txtEmail.setStyle("-fx-background-color: #eeeeee;");
 			
 			btnSave.setText("Save");
 			btnSave.setPrefWidth(80);
+		} else {
+			hideAccountUrl();
 		}
 	}
 
@@ -169,5 +170,20 @@ public class AcmeRegistrationEditorController {
 	
 	private void showWarning(String message) {
 		new Alert(Alert.AlertType.WARNING, message).showAndWait();
-	}	
+	}
+	
+	private void showAccountUrl() {
+		lblAccountUrl.setVisible(true);
+		lblAccountUrl.setManaged(true);
+		txtAccountUrl.setVisible(true);
+		txtAccountUrl.setManaged(true);
+		txtAccountUrl.setStyle("-fx-background-color: #eeeeee;");
+	}
+
+	private void hideAccountUrl() {
+		lblAccountUrl.setVisible(false);
+		lblAccountUrl.setManaged(false);
+		txtAccountUrl.setVisible(false);
+		txtAccountUrl.setManaged(false);
+	}
 }

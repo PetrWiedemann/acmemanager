@@ -65,6 +65,8 @@ import net.pdynet.acmemanager.model.IssuedCertificate;
 import net.pdynet.acmemanager.service.dns.DnsChallengeProcessor;
 import net.pdynet.acmemanager.service.dns.DnsManager;
 import net.pdynet.acmemanager.service.dns.DnsManagerFactory;
+import net.pdynet.acmemanager.service.dns.DnsPersistChallengeProcessor;
+import net.pdynet.acmemanager.service.http.HttpChallengeProcessor;
 import net.pdynet.acmemanager.util.ApiClientUtils;
 import net.pdynet.acmemanager.util.BlindTrustManager;
 import tools.jackson.databind.node.ArrayNode;
@@ -79,8 +81,6 @@ public class CertificateIssuanceService {
 				dao -> dao.findById(definitionId));
 		AcmeRegistration acmeReg = App.getJdbi().withExtension(AcmeRegistrationDao.class,
 				dao -> dao.findById(definition.getAcmeRegistrationId()));
-		DnsProvider dnsProvider = App.getJdbi().withExtension(DnsProviderDao.class,
-				dao -> dao.findById(definition.getDnsProviderId()));
 
 		OffsetDateTime now = OffsetDateTime.now();
 
@@ -101,7 +101,7 @@ public class CertificateIssuanceService {
 			};
 		}
 
-		// Přihlášení k existujícímu ACME účtu (místo zakládání nového)
+		// Přihlášení k existujícímu ACME účtu
 		URI serverUri = URI.create(acmeReg.getServerUrl());
 		URI accountUri = URI.create(acmeReg.getAccountUrl());
 		Session session = null;
@@ -116,7 +116,7 @@ public class CertificateIssuanceService {
 		Account account = login.getAccount();
 
 		// Vytvoření objednávky (Order)
-		final List<String> domains = new ArrayList<>();
+		final Set<String> domains = new LinkedHashSet<>();
 		domains.add(definition.getDomainName());
 
 		Pattern.compile(",")
@@ -137,14 +137,28 @@ public class CertificateIssuanceService {
 
 		int orderId = App.getJdbi().withExtension(CertificateOrderDao.class, dao -> dao.insert(certificateOrder));
 		certificateOrder.setId(orderId);
-
-		// Vyřešení DNS Challenges
-		HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
-		DnsManager dnsManager = DnsManagerFactory.getDnsManager(httpClientBuilder, dnsProvider);
-		DnsChallengeProcessor dnsChallengeProcessor = new DnsChallengeProcessor();
 		
+		// Vyřešení Challenges
 		try {
-			dnsChallengeProcessor.processChallenges(dnsManager, order);
+			switch (definition.getChallengeType()) {
+				case "DNS-01" -> {
+					DnsProvider dnsProvider = App.getJdbi().withExtension(DnsProviderDao.class, dao -> dao.findById(definition.getDnsProviderId()));
+					HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
+					DnsManager dnsManager = DnsManagerFactory.getDnsManager(httpClientBuilder, dnsProvider);
+					DnsChallengeProcessor challengeProcessor = new DnsChallengeProcessor();
+					challengeProcessor.processChallenges(dnsManager, order);
+				}
+				case "HTTP-01" -> {
+					Path webrootPath = Paths.get(definition.getWebrootPath());
+					HttpChallengeProcessor challengeProcessor = new HttpChallengeProcessor();
+					challengeProcessor.processChallenges(webrootPath, order);
+				}
+				case "DNS-PERSIST-01" -> {
+					DnsPersistChallengeProcessor challengeProcessor = new DnsPersistChallengeProcessor();
+					challengeProcessor.processChallenges(order);
+				}
+				case null, default -> throw new IllegalArgumentException("Unknown challenge type.");
+			}
 		} catch (AcmeException e) {
 			certificateOrder.setStatus(Status.INVALID.toString());
 			certificateOrder.setErrorMessage(e.getMessage());
@@ -174,7 +188,7 @@ public class CertificateIssuanceService {
 			App.getJdbi().useExtension(CertificateOrderDao.class, dao -> dao.update(certificateOrder));
 
 			if (order.getStatus() == Status.INVALID) {
-				throw new Exception("ACME Order failed. Check certificate_orders table or provider logs.");
+				throw new Exception("ACME Order failed. Check application logs.");
 			}
 		} while (!EnumSet.of(Status.VALID, Status.INVALID).contains(order.getStatus()));
 
@@ -268,8 +282,6 @@ public class CertificateIssuanceService {
 				logger.error("Failed to execute script: " + definition.getScriptPath(), e);
 			}
 		}
-		
-		logger.info("Successfully issued certificate for definition ID: " + definitionId);
 		
 		// Post-Processing: Smazání starých záznamů
 		cleanupOldRecords(definition.getId());

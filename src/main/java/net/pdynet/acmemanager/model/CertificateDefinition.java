@@ -23,7 +23,7 @@ public class CertificateDefinition {
 	private int acmeRegistrationId;
 
 	@ColumnName("dns_provider_id")
-	private int dnsProviderId;
+	private Integer dnsProviderId;
 
 	@ColumnName("key_algorithm")
 	private String keyAlgorithm;
@@ -81,6 +81,12 @@ public class CertificateDefinition {
 	
 	@ColumnName("jks_password")
 	private EncryptedString jksPassword;
+	
+	@ColumnName("challenge_type")
+	private String challengeType;
+	
+	@ColumnName("webroot_path")
+	private String webrootPath;
 	
 	/**
 	 * @return the id
@@ -183,14 +189,14 @@ public class CertificateDefinition {
 	/**
 	 * @return the dnsProviderId
 	 */
-	public int getDnsProviderId() {
+	public Integer getDnsProviderId() {
 		return dnsProviderId;
 	}
 
 	/**
 	 * @param dnsProviderId the dnsProviderId to set
 	 */
-	public void setDnsProviderId(int dnsProviderId) {
+	public void setDnsProviderId(Integer dnsProviderId) {
 		this.dnsProviderId = dnsProviderId;
 	}
 
@@ -460,6 +466,34 @@ public class CertificateDefinition {
 		this.jksPassword = jksPassword;
 	}
 
+	/**
+	 * @return the challengeType
+	 */
+	public String getChallengeType() {
+		return challengeType;
+	}
+
+	/**
+	 * @param challengeType the challengeType to set
+	 */
+	public void setChallengeType(String challengeType) {
+		this.challengeType = challengeType;
+	}
+
+	/**
+	 * @return the webrootPath
+	 */
+	public String getWebrootPath() {
+		return webrootPath;
+	}
+
+	/**
+	 * @param webrootPath the webrootPath to set
+	 */
+	public void setWebrootPath(String webrootPath) {
+		this.webrootPath = webrootPath;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -477,6 +511,7 @@ public class CertificateDefinition {
 				.append(webhookPayloadId).append(", webhookTrustAll=").append(webhookTrustAll)
 				.append(", webhookPassword=").append(webhookPassword).append(", autoExportJks=").append(autoExportJks)
 				.append(", exportPathJks=").append(exportPathJks).append(", jksPassword=").append(jksPassword)
+				.append(", challengeType=").append(challengeType).append(", webrootPath=").append(webrootPath)
 				.append("]");
 		return builder.toString();
 	}

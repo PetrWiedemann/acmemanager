@@ -14,136 +14,243 @@
       </Label>
       <Separator />
       
-		<ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="edge-to-edge">
-		      <content>
-		         <VBox spacing="15.0">      
-			      <GridPane hgap="10.0" vgap="12.0">
-			        <columnConstraints>
-			          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="150.0" />
-			          <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" />
-			        </columnConstraints>
-			        <rowConstraints>
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			          <RowConstraints vgrow="SOMETIMES" />
-			        </rowConstraints>
-			         <children>
-			            <Label text="Friendly Name:" />
-			            <TextField fx:id="txtName" promptText="e.g. Production Webserver" GridPane.columnIndex="1" />
-			            
-			            <Label text="Common Name (FQDN):" GridPane.rowIndex="1" />
-			            <TextField fx:id="txtDomain" promptText="example.com" GridPane.rowIndex="1" GridPane.columnIndex="1" />
-			            
-			            <Label text="Alternative Names (SAN):" GridPane.rowIndex="2" />
-			            <TextArea fx:id="txtSan" prefHeight="60.0" promptText="one.com, two.com (comma separated)" GridPane.rowIndex="2" GridPane.columnIndex="1" />
-			            
-			            <Label text="ACME Registration:" GridPane.rowIndex="3" />
-			            <ComboBox fx:id="cbAcme" maxWidth="1.7976931348623157E308" GridPane.rowIndex="3" GridPane.columnIndex="1" />
-			            
-			            <Label text="DNS Provider:" GridPane.rowIndex="4" />
-			            <ComboBox fx:id="cbDns" maxWidth="1.7976931348623157E308" GridPane.rowIndex="4" GridPane.columnIndex="1" />
-			            
-			            <Label text="Key Algorithm:" GridPane.rowIndex="5" />
-			            <HBox spacing="10.0" GridPane.rowIndex="5" GridPane.columnIndex="1">
-			               <children>
-			                  <ComboBox fx:id="cbAlgorithm" prefWidth="100.0" />
-			                  <ComboBox fx:id="cbKeySpec" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" />
-			               </children>
-			            </HBox>
-			            
-			            <Label text="Renewal Settings:" GridPane.rowIndex="6" />
-			            <HBox alignment="CENTER_LEFT" spacing="10.0" GridPane.rowIndex="6" GridPane.columnIndex="1">
-			               <children>
-			                  <CheckBox fx:id="chbAutoRenew" mnemonicParsing="false" text="Auto Renew" selected="true" />
-			                  <Label text="Days before:">
-			                     <padding><Insets left="10.0"/></padding>
-			                  </Label>
-			                  <Spinner fx:id="spnRenewDays" prefWidth="80.0" />
-			               </children>
-			            </HBox>
-			            
-			            <Separator GridPane.columnSpan="2" GridPane.rowIndex="7">
-			               <GridPane.margin><Insets bottom="5.0" top="5.0" /></GridPane.margin>
-			            </Separator>
-			
-			            <CheckBox fx:id="chbAutoExport" text="Auto-export PEM files:" GridPane.rowIndex="8" />
-			            <VBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="8">
-			               <children>
-			                  <TextField fx:id="txtExportPathCert" promptText="Path for Certificate (e.g. /etc/ssl/domain.crt)" />
-			                  <TextField fx:id="txtExportPathChain" promptText="Path for Chain (e.g. /etc/ssl/chain.crt)" />
-			                  <TextField fx:id="txtExportPathKey" promptText="Path for Private Key (e.g. /etc/ssl/private.key)" />
-			               </children>
-			            </VBox>
-			
-			            <CheckBox fx:id="chbExportJks" text="Auto export to JKS" GridPane.rowIndex="9" />
-			
-			            <Label text="JKS Export Path:" GridPane.rowIndex="10" />
-			            <TextField fx:id="txtExportPathJks" promptText="/home/user/app/cert.jks" GridPane.columnIndex="1" GridPane.rowIndex="10" />
-			
-			            <Label text="JKS Password:" GridPane.rowIndex="11" />
-			            <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="11">
-			                <StackPane HBox.hgrow="ALWAYS">
-			                    <PasswordField fx:id="passJks" />
-			                    <TextField fx:id="txtJksVisible" visible="false" />
-			                </StackPane>
-			                <ToggleButton fx:id="btnShowJks" onAction="#togglePasswordVisibility" text="👁" />
-			            </HBox>
-			
-			            <CheckBox fx:id="chbRunScript" text="Run script after success:" GridPane.rowIndex="12" />
-			            <TextField fx:id="txtScriptPath" promptText="e.g. /usr/local/bin/reload_nginx.sh" GridPane.columnIndex="1" GridPane.rowIndex="12" />            
-			         </children>
-			      </GridPane>
-			      
-					<TitledPane text="Webhook Distribution" expanded="false">
-					    <content>
-					        <GridPane hgap="10.0" vgap="10.0">
-					            <columnConstraints>
-					                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="150.0" />
-					                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" />
-					            </columnConstraints>
-					            <children>
-					                <CheckBox fx:id="chbSendToWebhook" text="Send P12 to Webhook" />
-					                <TextField fx:id="txtWebhookUrl" promptText="https://api.system.com/v1/cert" GridPane.columnIndex="1" />
-					                
-					                <Label text="HTTP Headers (key=val##...):" GridPane.rowIndex="1" />
-					                <TextArea fx:id="txtWebhookHeaders" prefHeight="60.0" promptText="Authorization=Bearer abc##X-Custom=val" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-					                
-					                <Label text="Payload ID:" GridPane.rowIndex="2" />
-					                <TextField fx:id="txtWebhookPayloadId" promptText="JSON payload ID value" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-					                
-					                <Label text="P12 Password:" GridPane.rowIndex="3" />
-					                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="3">
-					                    <StackPane HBox.hgrow="ALWAYS">
-					                        <PasswordField fx:id="passWebhookPassword" />
-					                        <TextField fx:id="txtWebhookPasswordVisible" visible="false" />
-					                    </StackPane>
-					                    <ToggleButton fx:id="btnShowWebhookPass" onAction="#togglePasswordVisibility" text="👁" />
-					                </HBox>		                
-					                
-					                <CheckBox fx:id="chbWebhookTrustAll" text="Bypass SSL verification for webhook" GridPane.rowIndex="4" GridPane.columnIndex="1" />
-					            </children>
-					        </GridPane>
-					    </content>
-					</TitledPane>
-				</VBox>
-		      </content>
-		   </ScrollPane>      
+      <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="edge-to-edge">
+            <content>
+               <VBox spacing="15.0">      
+               <GridPane hgap="10.0" vgap="0.0">
+                 <columnConstraints>
+                   <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="150.0" />
+                   <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" />
+                 </columnConstraints>
+                 <rowConstraints>
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                   <RowConstraints vgrow="SOMETIMES" />
+                 </rowConstraints>
+                  <children>
+                     <Label text="Friendly Name:">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <TextField fx:id="txtName" promptText="e.g. My Web Server" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </TextField>
+                     
+                     <Label text="Common Name (FQDN):" GridPane.rowIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <TextField fx:id="txtDomain" promptText="e.g. example.com" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </TextField>
+                     
+                     <Label text="Alternative Names (SAN):" GridPane.rowIndex="2">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <TextArea fx:id="txtSan" prefHeight="60.0" promptText="one.com,two.com (comma separated)" wrapText="true" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </TextArea>
+                     
+                     <Label text="ACME Registration:" GridPane.rowIndex="3">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <ComboBox fx:id="cbAcmeAccount" maxWidth="1.7976931348623157E308" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </ComboBox>
+
+                     <Label text="Challenge Type:" GridPane.rowIndex="4">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <ComboBox fx:id="cbChallengeType" maxWidth="1.7976931348623157E308" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </ComboBox>
+
+                     <Label fx:id="lblDnsProvider" text="DNS Provider:" GridPane.rowIndex="5">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <ComboBox fx:id="cbDnsProvider" maxWidth="1.7976931348623157E308" GridPane.rowIndex="5" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </ComboBox>
+
+                     <Label fx:id="lblWebrootPath" text="Webroot Path:" GridPane.rowIndex="6">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <TextField fx:id="txtWebrootPath" promptText="e.g. /var/www/html" GridPane.rowIndex="6" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </TextField>
+
+                     <VBox fx:id="boxPersistInfo" spacing="8.0" style="-fx-background-color: #fef9e7; -fx-padding: 12; -fx-border-color: #f1c40f; -fx-border-radius: 5;" GridPane.columnIndex="1" GridPane.rowIndex="7">
+                        <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                        <children>
+                           <Label text="Manual DNS Configuration Hint" style="-fx-font-weight: bold; -fx-text-fill: #d35400;" />
+                           <Label text="Create a permanent TXT record in your DNS zone first. Repeat for all SANs." wrapText="true" />
+                           <HBox spacing="10.0" alignment="CENTER_LEFT">
+                              <children>
+                                 <Label text="Name:" prefWidth="50" />
+                                 <TextField fx:id="txtPersistRecordName" editable="false" HBox.hgrow="ALWAYS" style="-fx-font-family: monospace;" />
+                              </children>
+                           </HBox>
+                           <HBox spacing="10.0" alignment="CENTER_LEFT">
+                              <children>
+                                 <Label text="Value:" prefWidth="50" />
+                                 <TextField fx:id="txtPersistRecordValue" editable="false" HBox.hgrow="ALWAYS" style="-fx-font-family: monospace;" />
+                              </children>
+                           </HBox>
+                        </children>
+                     </VBox>
+
+                     <Label text="Key Algorithm:" GridPane.rowIndex="8">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <HBox spacing="10.0" GridPane.rowIndex="8" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                       <children>
+                         <ComboBox fx:id="cbAlgorithm" prefWidth="100.0" />
+                         <ComboBox fx:id="cbKeySpec" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" />
+                       </children>
+                     </HBox>
+                     
+                     <Label text="Renewal Settings:" GridPane.rowIndex="9">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                     </Label>
+                     <HBox alignment="CENTER_LEFT" spacing="10.0" GridPane.rowIndex="9" GridPane.columnIndex="1">
+                       <GridPane.margin><Insets bottom="12.0" /></GridPane.margin>
+                       <children>
+                         <CheckBox fx:id="chbAutoRenew" mnemonicParsing="false" text="Auto Renew" selected="true" />
+                         <Label text="Days before:">
+                           <padding><Insets left="10.0"/></padding>
+                         </Label>
+                         <Spinner fx:id="spnRenewDays" prefWidth="80.0" />
+                       </children>
+                     </HBox>
+
+                     <Separator GridPane.columnSpan="2" GridPane.rowIndex="10">
+                       <GridPane.margin><Insets bottom="5.0" top="5.0" /></GridPane.margin>
+                     </Separator>
+
+                     <CheckBox fx:id="chbAutoExport" text="Auto-export PEM files:" GridPane.rowIndex="11" GridPane.valignment="TOP">
+                       <GridPane.margin>
+                         <Insets top="5.0" />
+                       </GridPane.margin>
+                     </CheckBox>
+                     <GridPane hgap="10.0" vgap="10.0" GridPane.rowIndex="11" GridPane.columnIndex="1">
+                        <columnConstraints>
+                           <ColumnConstraints hgrow="NEVER" />
+                           <ColumnConstraints hgrow="ALWAYS" />
+                        </columnConstraints>
+                        <rowConstraints>
+                           <RowConstraints vgrow="SOMETIMES" />
+                           <RowConstraints vgrow="SOMETIMES" />
+                           <RowConstraints vgrow="SOMETIMES" />
+                        </rowConstraints>
+                        <children>
+                           <Label text="Certificate Path:" textFill="#7f8c8d" />
+                           <TextField fx:id="txtExportPathCert" promptText="Path for Certificate (e.g. /etc/ssl/domain.crt)" GridPane.columnIndex="1" />
+
+                           <Label text="Chain Path:" textFill="#7f8c8d" GridPane.rowIndex="1" />
+                           <TextField fx:id="txtExportPathChain" promptText="Path for Chain (e.g. /etc/ssl/chain.crt)" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+
+                           <Label text="Private Key Path:" textFill="#7f8c8d" GridPane.rowIndex="2" />
+                           <TextField fx:id="txtExportPathKey" promptText="Path for Private Key (e.g. /etc/ssl/private.key)" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                        </children>
+                     </GridPane>
+                     
+                     <Separator GridPane.columnSpan="2" GridPane.rowIndex="12">
+                       <GridPane.margin><Insets bottom="5.0" top="5.0" /></GridPane.margin>
+                     </Separator>
+                     
+                     <CheckBox fx:id="chbAutoExportJks" text="Auto-export JKS file:" GridPane.rowIndex="13" GridPane.valignment="TOP">
+                       <GridPane.margin>
+                         <Insets top="5.0" />
+                       </GridPane.margin>
+                     </CheckBox>
+                     <GridPane hgap="10.0" vgap="10.0" GridPane.rowIndex="13" GridPane.columnIndex="1">
+                        <columnConstraints>
+                           <ColumnConstraints hgrow="NEVER" />
+                           <ColumnConstraints hgrow="ALWAYS" />
+                        </columnConstraints>
+                        <rowConstraints>
+                           <RowConstraints vgrow="SOMETIMES" />
+                           <RowConstraints vgrow="SOMETIMES" />
+                        </rowConstraints>
+                        <children>
+                           <Label text="JKS Export Path:" textFill="#7f8c8d" />
+                           <TextField fx:id="txtExportPathJks" promptText="e.g. /etc/ssl/keystore.jks" GridPane.columnIndex="1" />
+
+                           <Label text="JKS Password:" textFill="#7f8c8d" GridPane.rowIndex="1" />
+                           <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                              <StackPane HBox.hgrow="ALWAYS">
+                                 <PasswordField fx:id="passJks" />
+                                 <TextField fx:id="txtJksVisible" visible="false" />
+                              </StackPane>
+                              <ToggleButton fx:id="btnShowJks" onAction="#togglePasswordVisibility" text="👁" />
+                           </HBox>
+                        </children>
+                     </GridPane>
+                     
+                     <Separator GridPane.columnSpan="2" GridPane.rowIndex="14">
+                       <GridPane.margin><Insets bottom="5.0" top="5.0" /></GridPane.margin>
+                     </Separator>
+                     
+                     <CheckBox fx:id="chbRunScript" text="Run script after success:" GridPane.rowIndex="15" />
+                     <TextField fx:id="txtScriptPath" promptText="e.g. /usr/local/bin/reload_nginx.sh" GridPane.columnIndex="1" GridPane.rowIndex="15" />            
+                  </children>
+               </GridPane>
+
+               <TitledPane text="Webhook Distribution" expanded="false">
+                  <content>
+                     <GridPane hgap="10.0" vgap="12.0">
+                        <columnConstraints>
+                           <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="150.0" />
+                           <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" />
+                        </columnConstraints>
+                        <children>
+                           <Label text="Send to Webhook:" />
+                           <CheckBox fx:id="chbSendToWebhook" text="Send P12 to remote URL" GridPane.columnIndex="1" />
+                           
+                           <Label text="Webhook URL:" GridPane.rowIndex="1" />
+                           <TextField fx:id="txtWebhookUrl" promptText="https://api.example.com/deploy" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                           
+                           <Label text="Custom Headers:" GridPane.rowIndex="2" />
+                           <TextArea fx:id="txtWebhookHeaders" prefHeight="60.0" wrapText="true" promptText="Key1=Value1##Key2=Value2" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                           
+                           <Label text="P12 Password:" GridPane.rowIndex="3" />
+                           <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                              <StackPane HBox.hgrow="ALWAYS">
+                                 <PasswordField fx:id="passWebhookPassword" />
+                                 <TextField fx:id="txtWebhookPasswordVisible" visible="false" />
+                              </StackPane>
+                              <ToggleButton fx:id="btnShowWebhookPass" onAction="#togglePasswordVisibility" text="👁" />
+                           </HBox>                         
+                           
+                           <Label text="Payload ID:" GridPane.rowIndex="4" />
+                           <TextField fx:id="txtWebhookPayloadId" promptText="e.g. server-123" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                           
+                           <CheckBox fx:id="chbWebhookTrustAll" text="Bypass SSL verification for webhook" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+                        </children>
+                     </GridPane>
+                  </content>
+               </TitledPane>
+            </VBox>
+            </content>
+         </ScrollPane>      
       
       <Separator />
       <HBox alignment="CENTER_RIGHT" spacing="10.0" VBox.vgrow="NEVER">
          <children>
             <Button mnemonicParsing="false" onAction="#handleCancel" prefWidth="80.0" prefHeight="35.0" minHeight="35.0" text="Cancel" />
-            <Button mnemonicParsing="false" onAction="#handleSave" prefWidth="100.0" prefHeight="35.0" minHeight="35.0" style="-fx-background-color: #27ae60; -fx-text-fill: white;" text="Save Changes" />
+            <Button mnemonicParsing="false" onAction="#handleSave" prefWidth="120.0" prefHeight="35.0" minHeight="35.0" style="-fx-background-color: #27ae60; -fx-text-fill: white;" text="Save Changes" />
          </children>
       </HBox>
    </children>

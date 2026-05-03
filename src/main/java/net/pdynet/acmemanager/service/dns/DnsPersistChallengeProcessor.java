@@ -13,7 +13,7 @@ import org.apache.commons.lang3.Strings;
 import org.shredzone.acme4j.Authorization;
 import org.shredzone.acme4j.Order;
 import org.shredzone.acme4j.Status;
-import org.shredzone.acme4j.challenge.Dns01Challenge;
+import org.shredzone.acme4j.challenge.DnsPersist01Challenge;
 import org.shredzone.acme4j.exception.AcmeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,21 +26,18 @@ import org.xbill.DNS.Type;
 import org.xbill.DNS.lookup.LookupSession;
 import org.xbill.DNS.lookup.NoSuchDomainException;
 
-import net.pdynet.acmemanager.App;
-import net.pdynet.acmemanager.dao.ConfigDao;
-import net.pdynet.acmemanager.model.ConfigRecord;
 import net.pdynet.acmemanager.service.Threading;
 import net.pdynet.acmemanager.util.ApiException;
 
-public class DnsChallengeProcessor {
-	private static final Logger logger = LoggerFactory.getLogger(DnsChallengeProcessor.class);
+public class DnsPersistChallengeProcessor {
+	private static final Logger logger = LoggerFactory.getLogger(DnsPersistChallengeProcessor.class);
 	// 86.54.11.100 -> https://joindns4.eu/for-public
 	// 8.8.8.8, 8.8.4.4 -> https://developers.google.com/speed/public-dns
 	private final String[] dnsServers = { null, "86.54.11.100", "8.8.8.8", "8.8.4.4" };
 	
-	public void processChallenges(final DnsManager dnsManager, final Order order) throws ApiException, InterruptedException, AcmeException {
+	public void processChallenges(final Order order) throws ApiException, InterruptedException, AcmeException {
 		List<DnsChallengeTask> tasks = new ArrayList<>();
-		List<Dns01Challenge> challenges = new ArrayList<>();
+		List<DnsPersist01Challenge> challenges = new ArrayList<>();
 		
 		for (Authorization auth : order.getAuthorizations()) {
 			String authDomain = auth.getIdentifier().getDomain();
@@ -50,10 +47,10 @@ public class DnsChallengeProcessor {
 				continue; 
 			}
 			
-			Dns01Challenge challenge = auth.findChallenge(Dns01Challenge.class).orElse(null);
+			DnsPersist01Challenge challenge = auth.findChallenge(DnsPersist01Challenge.class).orElse(null);
 			
 			if (challenge == null) {
-				throw new AcmeException("DNS-01 challenge is not available for domain " + authDomain);
+				throw new AcmeException("DNS-PERSIST-01 challenge is not available for domain " + authDomain);
 			}
 			
 			logger.debug("Challenge status {}", challenge.getStatus());
@@ -63,25 +60,19 @@ public class DnsChallengeProcessor {
 				continue;
 			}
 	        
+			boolean isWildcard = authDomain.startsWith("*.");
 			String resourceName = challenge.getRRName(auth.getIdentifier());
-			String digest = challenge.getDigest();
-			DnsChallengeTask task = new DnsChallengeTask(Strings.CS.removeEnd(resourceName, "."), digest);
-			dnsManager.createTxtRecord(task);
+			String rdata;
+			
+			if (isWildcard)
+				rdata = challenge.buildRData().wildcard().noQuotes().build();
+			else
+				rdata = challenge.buildRData().noQuotes().build();
+			
+			DnsChallengeTask task = new DnsChallengeTask(Strings.CS.removeEnd(resourceName, "."), rdata);
 			tasks.add(task);
 			challenges.add(challenge);
 		}
-		
-		// DNS popagation delay.
-		ConfigRecord configRecord = App.getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("dns_propagation_delay"));
-		Duration dnsPropagationDelay;
-		
-		if (configRecord == null)
-			dnsPropagationDelay = Duration.ofSeconds(3);
-		else
-			dnsPropagationDelay = Duration.ofSeconds(configRecord.getIntValue());
-		
-		logger.info("Waiting {} seconds for DNS record propagation.", dnsPropagationDelay.getSeconds());
-		Thread.sleep(dnsPropagationDelay);
 		
 		CompletableFuture<Void> dnsVerifyFuture = verifyAllDnsPropagatedAsync(tasks);
 		
@@ -89,7 +80,7 @@ public class DnsChallengeProcessor {
 			dnsVerifyFuture.join();
 			
 			// Informing the authority that they can start checking the records.
-			for (Dns01Challenge challenge : challenges) {
+			for (DnsPersist01Challenge challenge : challenges) {
 				challenge.trigger();
 			}
 			
@@ -108,14 +99,6 @@ public class DnsChallengeProcessor {
 				throw new ApiException(e);
 			}
 		} finally {
-			// Deleting a DNS records.
-			for (DnsChallengeTask task : tasks) {
-				try {
-					dnsManager.deleteTxtRecord(task);
-				} catch (ApiException e) {
-					logger.error("An error occurred while deleting the DNS record.", e);
-				}
-			}
 		}
 	}
 	
@@ -228,15 +211,14 @@ public class DnsChallengeProcessor {
 
 			for (Record record : result.getRecords()) {
 				if (record instanceof TXTRecord txt) {
-					for (String value : txt.getStrings()) {
-						logger.debug("Testing TXT record {} with value {}", txt.getName().toString(), value);
-						
-						if (expectedValue.equals(value)) {
-							logger.debug(" ... match found");
-							return true;
-						} else {
-							logger.debug(" ... match not found");
-						}
+					String joinedDnsValue = String.join("", txt.getStrings());
+					logger.debug("Testing TXT record {} with value {}", txt.getName().toString(), joinedDnsValue);
+					
+					if (doRecordsMatch(expectedValue, joinedDnsValue)) {
+						logger.debug(" ... match found");
+						return true;
+					} else {
+						logger.debug(" ... match not found");
 					}
 				}
 			}
@@ -252,5 +234,22 @@ public class DnsChallengeProcessor {
 		}
 		
 		return false;
+	}
+	
+	private boolean doRecordsMatch(String expected, String actual) {
+		if (expected == null || actual == null)
+			return false;
+
+		java.util.Set<String> expectedParts = java.util.Arrays.stream(expected.split(";"))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(java.util.stream.Collectors.toSet());
+
+		java.util.Set<String> actualParts = java.util.Arrays.stream(actual.split(";"))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(java.util.stream.Collectors.toSet());
+
+		return actualParts.containsAll(expectedParts);
 	}
 }

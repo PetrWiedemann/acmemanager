@@ -4,10 +4,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
 import java.security.Security;
 import java.sql.SQLException;
 
 import javax.crypto.SecretKey;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -38,6 +41,7 @@ import net.pdynet.acmemanager.service.Threading;
 import net.pdynet.acmemanager.service.bot.Activity;
 import net.pdynet.acmemanager.service.bot.Message;
 import net.pdynet.acmemanager.service.bot.ReportSubmission;
+import net.pdynet.acmemanager.util.BlindTrustManager;
 
 public class App extends Application {
 	private static final Logger logger = LoggerFactory.getLogger(App.class);
@@ -170,6 +174,7 @@ public class App extends Application {
 				ConfigRecord configReportUri = getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("report_uri"));
 				ConfigRecord configReportRecipient = getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("report_recipient"));
 				ConfigRecord configReportKey = getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("report_key"));
+				ConfigRecord configReportBypassSsl = getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("report_bypass_ssl"));
 				
 				if (configReportUri != null
 						&& configReportRecipient != null
@@ -185,7 +190,20 @@ public class App extends Application {
 					botMessage.setS4wConnectId(configReportRecipient.getTextValue());
 					botMessage.setActivity(activity);
 					
-					ReportSubmission reportSubmission = new ReportSubmission(HttpClient.newHttpClient(), new URI(configReportUri.getTextValue()), configReportKey.getTextValue());
+					HttpClient httpClient;
+					
+					if (configReportBypassSsl != null && configReportBypassSsl.getIntValue() > 0) {
+						TrustManager[] trustAllCerts = new TrustManager[] { new BlindTrustManager() };
+						SSLContext sc = SSLContext.getInstance("TLS");
+						sc.init(null, trustAllCerts, new SecureRandom());
+
+						HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().sslContext(sc);
+						httpClient = httpClientBuilder.build();
+					} else {
+						httpClient = HttpClient.newHttpClient();
+					}
+					
+					ReportSubmission reportSubmission = new ReportSubmission(httpClient, new URI(configReportUri.getTextValue()), configReportKey.getTextValue());
 					reportSubmission.sendMessage(botMessage);
 				}
 			}
