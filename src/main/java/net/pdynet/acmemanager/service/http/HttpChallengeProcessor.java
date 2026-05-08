@@ -34,70 +34,76 @@ public class HttpChallengeProcessor {
 			throw new AcmeException("Webroot path is not valid folder.");
 		
 		boolean webrootPathWellknownCreated = false;
-		Path webrootPathWellknown = webrootPath.resolve(".well-known");
-		if (!Files.isDirectory(webrootPathWellknown)) {
-			Files.createDirectory(webrootPathWellknown);
-			webrootPathWellknownCreated = true;
-		}
-		
 		boolean webrootPathAcmeChallengeCreated = false;
-		Path webrootPathAcmeChallenge = webrootPathWellknown.resolve("acme-challenge");
-		if (!Files.isDirectory(webrootPathAcmeChallenge)) {
-			Files.createDirectory(webrootPathAcmeChallenge);
-			webrootPathAcmeChallengeCreated = true;
-		}
-		
-		for (Authorization auth : order.getAuthorizations()) {
-			String authDomain = auth.getIdentifier().getDomain();
-			
-			if (authDomain.startsWith("*."))
-				throw new IllegalArgumentException("Protocol error: HTTP-01 challenge cannot be used to validate wildcard domain (" + authDomain + ").");
-			
-			if (auth.getStatus() == Status.VALID) {
-				logger.info("Authorization for domain {} is already VALID. Skipping HTTP challenge.", authDomain);
-				continue; 
-			}
-			
-			Http01Challenge challenge = auth.findChallenge(Http01Challenge.class).orElse(null);
-			
-			if (challenge == null) {
-				throw new AcmeException("HTTP-01 challenge is not available for domain " + authDomain);
-			}
-			
-			logger.debug("Challenge status {}", challenge.getStatus());
-
-			if (challenge.getStatus() == Status.VALID) {
-				logger.info("Challenge for domain {} is already VALID. Skipping trigger.", authDomain);
-				continue;
-			}
-			
-			String token = challenge.getToken();
-			String content = challenge.getAuthorization();
-			
-			Path challengeFile = webrootPathAcmeChallenge.resolve(token);
-			Files.writeString(challengeFile, content);
-			challengeFiles.add(challengeFile);
-			challenges.add(challenge);
-		}
+		Path webrootPathWellknown = null;
+		Path webrootPathAcmeChallenge = null;
 		
 		try {
-			for (Http01Challenge challenge : challenges) {
-				challenge.trigger();
+			webrootPathWellknown = webrootPath.resolve(".well-known");
+			if (!Files.isDirectory(webrootPathWellknown)) {
+				Files.createDirectory(webrootPathWellknown);
+				webrootPathWellknownCreated = true;
 			}
 			
-			// Waiting for authorization from the authority.
-			CompletableFuture<Void> authorizationVerifyFuture = verifyAllAuthorizationCompleteAsync(order);
-			authorizationVerifyFuture.join();
+			webrootPathAcmeChallenge = webrootPathWellknown.resolve("acme-challenge");
+			if (!Files.isDirectory(webrootPathAcmeChallenge)) {
+				Files.createDirectory(webrootPathAcmeChallenge);
+				webrootPathAcmeChallengeCreated = true;
+			}
 			
-		} catch (CompletionException e) {
-			Throwable cause = e.getCause();
+			for (Authorization auth : order.getAuthorizations()) {
+				String authDomain = auth.getIdentifier().getDomain();
+				
+				if (authDomain.startsWith("*."))
+					throw new IllegalArgumentException("Protocol error: HTTP-01 challenge cannot be used to validate wildcard domain (" + authDomain + ").");
+				
+				if (auth.getStatus() == Status.VALID) {
+					logger.info("Authorization for domain {} is already VALID. Skipping HTTP challenge.", authDomain);
+					continue; 
+				}
+				
+				Http01Challenge challenge = auth.findChallenge(Http01Challenge.class).orElse(null);
+				
+				if (challenge == null) {
+					throw new AcmeException("HTTP-01 challenge is not available for domain " + authDomain);
+				}
+				
+				logger.debug("Challenge status {}", challenge.getStatus());
+	
+				if (challenge.getStatus() == Status.VALID) {
+					logger.info("Challenge for domain {} is already VALID. Skipping trigger.", authDomain);
+					continue;
+				}
+				
+				String token = challenge.getToken();
+				String content = challenge.getAuthorization();
+				
+				Path challengeFile = webrootPathAcmeChallenge.resolve(token);
+				Files.writeString(challengeFile, content);
+				challengeFiles.add(challengeFile);
+				challenges.add(challenge);
+			}
 			
-			if (cause instanceof AcmeException) {
-				throw (AcmeException) cause;
-			} else if (cause instanceof ApiException) {
-				throw (ApiException) cause;
-			} else {
-				throw new ApiException(e);
+			try {
+				for (Http01Challenge challenge : challenges) {
+					challenge.trigger();
+				}
+				
+				// Waiting for authorization from the authority.
+				CompletableFuture<Void> authorizationVerifyFuture = verifyAllAuthorizationCompleteAsync(order);
+				authorizationVerifyFuture.join();
+				
+			} catch (CompletionException e) {
+				Throwable cause = e.getCause();
+				
+				if (cause instanceof AcmeException) {
+					throw (AcmeException) cause;
+				} else if (cause instanceof ApiException) {
+					throw (ApiException) cause;
+				} else {
+					throw new ApiException(e);
+				}
+			} finally {
 			}
 		} finally {
 			try {
