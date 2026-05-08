@@ -25,6 +25,8 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
@@ -75,7 +77,7 @@ import tools.jackson.databind.node.ObjectNode;
 public class CertificateIssuanceService {
 	private static final Logger logger = LoggerFactory.getLogger(CertificateIssuanceService.class);
 
-	public void fetchCertificateForDefinition(int definitionId) throws Exception {
+	public void fetchCertificateForDefinition(final int definitionId, final AtomicBoolean cancelToken) throws Exception {
 		// Načtení závislostí z DB
 		CertificateDefinition definition = App.getJdbi().withExtension(CertificateDefinitionDao.class,
 				dao -> dao.findById(definitionId));
@@ -145,21 +147,30 @@ public class CertificateIssuanceService {
 					DnsProvider dnsProvider = App.getJdbi().withExtension(DnsProviderDao.class, dao -> dao.findById(definition.getDnsProviderId()));
 					HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
 					DnsManager dnsManager = DnsManagerFactory.getDnsManager(httpClientBuilder, dnsProvider);
-					DnsChallengeProcessor challengeProcessor = new DnsChallengeProcessor();
+					DnsChallengeProcessor challengeProcessor = new DnsChallengeProcessor(cancelToken);
 					challengeProcessor.processChallenges(dnsManager, order);
 				}
 				case "HTTP-01" -> {
 					Path webrootPath = Paths.get(definition.getWebrootPath());
-					HttpChallengeProcessor challengeProcessor = new HttpChallengeProcessor();
+					HttpChallengeProcessor challengeProcessor = new HttpChallengeProcessor(cancelToken);
 					challengeProcessor.processChallenges(webrootPath, order);
 				}
 				case "DNS-PERSIST-01" -> {
-					DnsPersistChallengeProcessor challengeProcessor = new DnsPersistChallengeProcessor();
+					DnsPersistChallengeProcessor challengeProcessor = new DnsPersistChallengeProcessor(cancelToken);
 					challengeProcessor.processChallenges(order);
 				}
 				case null, default -> throw new IllegalArgumentException("Unknown challenge type.");
 			}
+		} catch (CancellationException e) {
+			now = OffsetDateTime.now();
+			certificateOrder.setStatus("CANCELLED");
+			certificateOrder.setErrorMessage("CANCELLED: Operation cancelled by user.");
+			certificateOrder.setDateEdit(now);
+			App.getJdbi().useExtension(CertificateOrderDao.class, dao -> dao.update(certificateOrder));
+			
+			throw e;
 		} catch (AcmeException e) {
+			now = OffsetDateTime.now();
 			certificateOrder.setStatus(Status.INVALID.toString());
 			certificateOrder.setErrorMessage(e.getMessage());
 			certificateOrder.setDateEdit(now);

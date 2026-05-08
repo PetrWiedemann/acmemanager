@@ -20,10 +20,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CertificatesViewController {
 	private static final Logger logger = LoggerFactory.getLogger(CertificatesViewController.class);
 	private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+	
+	private AtomicBoolean activeCancelToken;
 
 	@FXML
 	private TableView<CertificateDefinitionView> certTable;
@@ -59,7 +63,7 @@ public class CertificatesViewController {
 		colAutoRenew.setCellValueFactory(
 				data -> new javafx.beans.property.SimpleBooleanProperty(data.getValue().isAutoRenew()));
 
-		// Formátování zobrazení pro Auto Renew (Checkbox look)
+		// Formatting display for Auto Renew (Checkbox look)
 		colAutoRenew.setCellFactory(column -> new TableCell<>() {
 			@Override
 			protected void updateItem(Boolean item, boolean empty) {
@@ -77,7 +81,7 @@ public class CertificatesViewController {
 					date != null ? date.format(dateFormatter) : "Not issued yet");
 		});
 
-		// Aktivace/deaktivace tlačítek podle výběru v tabulce
+		// Enable/disable buttons based on table selection
 		certTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
 			boolean isSelected = (newVal != null);
 			btnEdit.setDisable(!isSelected);
@@ -86,7 +90,7 @@ public class CertificatesViewController {
 			btnFetch.setDisable(!isSelected);
 		});
 
-		// Double-click pro editaci
+		// Double-click to edit
 		certTable.setRowFactory(tv -> {
 			TableRow<CertificateDefinitionView> row = new TableRow<>();
 			row.setOnMouseClicked(event -> {
@@ -190,6 +194,14 @@ public class CertificatesViewController {
 
 	@FXML
 	private void handleFetch() {
+		if (activeCancelToken != null && !activeCancelToken.get()) {
+			logger.info("User clicked STOP. Signaling cancellation...");
+			activeCancelToken.set(true);
+			btnFetch.setDisable(true);
+			btnFetch.setText("Stopping...");
+			return;
+		}
+		
 		CertificateDefinitionView selectedView = certTable.getSelectionModel().getSelectedItem();
 		if (selectedView == null)
 			return;
@@ -202,46 +214,55 @@ public class CertificatesViewController {
 		
 		if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES)
 			return;
-        
-		// Vypneme tlačítka a ukážeme kurzor načítání, aby uživatel neklikal znovu
-		btnFetch.setDisable(true);
-		btnFetch.setText("Fetching...");
+		
+		activeCancelToken = new AtomicBoolean(false);
+		btnFetch.setText("Stop operation");
+		btnFetch.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
 		certTable.getScene().setCursor(javafx.scene.Cursor.WAIT);
 
-		// Vytvoříme úkol na pozadí (Task)
+		// Create a background Task
 		javafx.concurrent.Task<Void> fetchTask = new javafx.concurrent.Task<>() {
 			@Override
 			protected Void call() throws Exception {
 				CertificateIssuanceService service = new CertificateIssuanceService();
-				service.fetchCertificateForDefinition(selectedView.getId());
+				service.fetchCertificateForDefinition(selectedView.getId(), activeCancelToken);
 				return null;
 			}
 		};
 
-		// Co se stane, když proces úspěšně skončí
-		fetchTask.setOnSucceeded(e -> {
-			resetUiState();
-			refreshData();
-			new Alert(Alert.AlertType.INFORMATION, "Certificate successfully issued and saved!").showAndWait();
-		});
+		// What happens when the process successfully finishes
+		fetchTask.setOnSucceeded(e -> finalizeProcess("Certificate successfully issued!", Alert.AlertType.INFORMATION));
 
-		// Co se stane při chybě
+		// What happens in case of an error
 		fetchTask.setOnFailed(e -> {
-			Throwable error = fetchTask.getException();
-			resetUiState();
-			logger.error("Failed to fetch certificate", error);
-			new Alert(Alert.AlertType.ERROR, "Failed to fetch certificate: " + error.getMessage()).showAndWait();
+			Throwable ex = fetchTask.getException();
+			if (ex instanceof CancellationException || ex.getCause() instanceof CancellationException) {
+				logger.warn("Operation was cancelled by user.");
+				finalizeProcess(null, null);
+			} else {
+				logger.error("Failed to fetch certificate", ex);
+				finalizeProcess("Failed to fetch certificate: " + ex.getMessage(), Alert.AlertType.ERROR);
+			}			
 		});
 
-		// Spuštění vlákna
+		// Start the thread
 		Thread thread = new Thread(fetchTask);
-		thread.setDaemon(true); // Ukončí se při zavření aplikace
+		thread.setDaemon(true);
 		thread.start();
 	}
 
-	private void resetUiState() {
-		btnFetch.setDisable(false);
-		btnFetch.setText("Fetch Certificate");
-		certTable.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+	private void finalizeProcess(String message, Alert.AlertType alertType) {
+		javafx.application.Platform.runLater(() -> {
+			activeCancelToken = null;
+			btnFetch.setText("Fetch Certificate");
+			btnFetch.setStyle("-fx-background-color: #8e44ad; -fx-text-fill: white;");
+			btnFetch.setDisable(false);
+			certTable.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+			
+			if (message != null) {
+				new Alert(alertType, message).showAndWait();
+				refreshData();
+			}
+		});
 	}
 }

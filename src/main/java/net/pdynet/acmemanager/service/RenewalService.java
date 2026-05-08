@@ -9,6 +9,7 @@ import org.slf4j.helpers.MessageFormatter;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RenewalService {
 	private static final Logger logger = LoggerFactory.getLogger(RenewalService.class);
@@ -42,7 +43,8 @@ public class RenewalService {
 			App.sendBotReport(message);
 			
 			try {
-				issuanceService.fetchCertificateForDefinition(def.getId());
+				AtomicBoolean cancelToken = new AtomicBoolean(false);
+				issuanceService.fetchCertificateForDefinition(def.getId(), cancelToken);
 				successCount++;
 				
 				message = MessageFormatter.format("SUCCESS: Certificate for '{}' renewed successfully.", 

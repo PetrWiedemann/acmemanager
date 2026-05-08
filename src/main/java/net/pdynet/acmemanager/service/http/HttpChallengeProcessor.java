@@ -7,9 +7,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.shredzone.acme4j.Authorization;
@@ -25,6 +27,12 @@ import net.pdynet.acmemanager.util.ApiException;
 
 public class HttpChallengeProcessor {
 	private static final Logger logger = LoggerFactory.getLogger(HttpChallengeProcessor.class);
+	
+	private final AtomicBoolean cancelToken;
+	
+	public HttpChallengeProcessor(final AtomicBoolean cancelToken) {
+		this.cancelToken = cancelToken;
+	}
 	
 	public void processChallenges(final Path webrootPath, final Order order) throws InterruptedException, ApiException, AcmeException, IOException {
 		List<Http01Challenge> challenges = new ArrayList<>();
@@ -94,6 +102,11 @@ public class HttpChallengeProcessor {
 				authorizationVerifyFuture.join();
 				
 			} catch (CompletionException e) {
+				if (cancelToken.get()) {
+					logger.warn("Challenge processing aborted by user.");
+					throw new CancellationException("Operation cancelled by user.");
+				}
+				
 				Throwable cause = e.getCause();
 				
 				if (cause instanceof AcmeException) {
@@ -139,6 +152,11 @@ public class HttpChallengeProcessor {
 	}
 	
 	private void checkAuthorizationWithRetry(final Authorization auth, final CompletableFuture<Boolean> future, final int attempt) {
+		if (cancelToken.get()) {
+			future.completeExceptionally(new CancellationException("Cancelled by user"));
+			return;
+		}
+		
 		if (future.isDone())
 			return;
 		

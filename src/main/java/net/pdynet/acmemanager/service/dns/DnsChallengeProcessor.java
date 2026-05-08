@@ -4,9 +4,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.Strings;
@@ -37,6 +39,12 @@ public class DnsChallengeProcessor {
 	// 86.54.11.100 -> https://joindns4.eu/for-public
 	// 8.8.8.8, 8.8.4.4 -> https://developers.google.com/speed/public-dns
 	private final String[] dnsServers = { null, "86.54.11.100", "8.8.8.8", "8.8.4.4" };
+	
+	private final AtomicBoolean cancelToken;
+	
+	public DnsChallengeProcessor(final AtomicBoolean cancelToken) {
+		this.cancelToken = cancelToken;
+	}
 	
 	public void processChallenges(final DnsManager dnsManager, final Order order) throws ApiException, InterruptedException, AcmeException {
 		List<DnsChallengeTask> tasks = new ArrayList<>();
@@ -71,17 +79,19 @@ public class DnsChallengeProcessor {
 			challenges.add(challenge);
 		}
 		
-		// DNS popagation delay.
-		ConfigRecord configRecord = App.getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("dns_propagation_delay"));
-		Duration dnsPropagationDelay;
-		
-		if (configRecord == null)
-			dnsPropagationDelay = Duration.ofSeconds(3);
-		else
-			dnsPropagationDelay = Duration.ofSeconds(configRecord.getIntValue());
-		
-		logger.info("Waiting {} seconds for DNS record propagation.", dnsPropagationDelay.getSeconds());
-		Thread.sleep(dnsPropagationDelay);
+		if (tasks.size() > 0) {
+			// DNS popagation delay.
+			ConfigRecord configRecord = App.getJdbi().withExtension(ConfigDao.class, dao -> dao.findById("dns_propagation_delay"));
+			Duration dnsPropagationDelay;
+			
+			if (configRecord == null)
+				dnsPropagationDelay = Duration.ofSeconds(3);
+			else
+				dnsPropagationDelay = Duration.ofSeconds(configRecord.getIntValue());
+			
+			logger.info("Waiting {} seconds for DNS record propagation.", dnsPropagationDelay.getSeconds());
+			Thread.sleep(dnsPropagationDelay);
+		}
 		
 		CompletableFuture<Void> dnsVerifyFuture = verifyAllDnsPropagatedAsync(tasks);
 		
@@ -98,6 +108,11 @@ public class DnsChallengeProcessor {
 			authorizationVerifyFuture.join();
 			
 		} catch (CompletionException e) {
+			if (cancelToken.get()) {
+				logger.warn("Challenge processing aborted by user.");
+				throw new CancellationException("Operation cancelled by user.");
+			}
+			
 			Throwable cause = e.getCause();
 			
 			if (cause instanceof AcmeException) {
@@ -136,6 +151,11 @@ public class DnsChallengeProcessor {
 	}
 	
 	private void checkAuthorizationWithRetry(final Authorization auth, final CompletableFuture<Boolean> future, final int attempt) {
+		if (cancelToken.get()) {
+			future.completeExceptionally(new CancellationException("Cancelled by user"));
+			return;
+		}
+		
 		if (future.isDone())
 			return;
 		
@@ -195,6 +215,11 @@ public class DnsChallengeProcessor {
 	}
 
 	private void checkDnsWithRetry(final String recordName, final String expectedValue, final CompletableFuture<Boolean> future, final int attempt) {
+		if (cancelToken.get()) {
+			future.completeExceptionally(new CancellationException("Cancelled by user"));
+			return;
+		}
+		
 		if (future.isDone())
 			return;
 
