@@ -1,6 +1,7 @@
 package net.pdynet.acmemanager.service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -9,6 +10,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
@@ -87,7 +91,7 @@ public class CertificateIssuanceService {
 		OffsetDateTime now = OffsetDateTime.now();
 
 		AcmeProvider acmeProvider = null;
-
+		
 		if (acmeReg.isTrustAllCertificates()) {
 			TrustManager[] trustAllCerts = new TrustManager[] { new BlindTrustManager() };
 			SSLContext sc = SSLContext.getInstance("TLS");
@@ -275,30 +279,14 @@ public class CertificateIssuanceService {
 		
 		// Post-Processing: Spuštění externího skriptu
 		if (definition.isRunScript() && definition.getScriptPath() != null && !definition.getScriptPath().isBlank()) {
-			try {
-				logger.info("Executing post-issuance script: " + definition.getScriptPath());
-
-				ProcessBuilder pb = new ProcessBuilder(definition.getScriptPath(), definition.getDomainName());
-				pb.redirectErrorStream(true);
-				Process process = pb.start();
-
-				boolean finished = process.waitFor(60, java.util.concurrent.TimeUnit.SECONDS);
-				if (finished) {
-					logger.info("Script finished with exit code: " + process.exitValue());
-				} else {
-					process.destroy();
-					logger.warn("Script timed out after 60 seconds and was terminated.");
-				}
-			} catch (Exception e) {
-				logger.error("Failed to execute script: " + definition.getScriptPath(), e);
-			}
+			runScript(definition);
 		}
 		
 		// Post-Processing: Smazání starých záznamů
 		cleanupOldRecords(definition.getId());
 	}
 
-	private void exportToFile(String path, String content, String label) {
+	private void exportToFile(final String path, final String content, final String label) {
 		if (path == null || path.isBlank() || content == null || content.isBlank())
 			return;
 		
@@ -313,7 +301,7 @@ public class CertificateIssuanceService {
 		}
 	}
 	
-	private void exportToJks(CertificateDefinition definition, X509Certificate cert, List<X509Certificate> chain, PrivateKey privateKey) {
+	private void exportToJks(final CertificateDefinition definition, final X509Certificate cert, final List<X509Certificate> chain, final PrivateKey privateKey) {
 		if (!definition.isAutoExportJks() || StringUtils.isBlank(definition.getExportPathJks())) {
 			return;
 		}
@@ -345,7 +333,7 @@ public class CertificateIssuanceService {
 		}
 	}
 	
-	private void sendWebhook(CertificateDefinition definition, X509Certificate cert, List<X509Certificate> chain, PrivateKey privateKey) {
+	private void sendWebhook(final CertificateDefinition definition, final X509Certificate cert, final List<X509Certificate> chain, final PrivateKey privateKey) {
 		if (!definition.isSendToWebhook() || StringUtils.isBlank(definition.getWebhookUrl()))
 			return;
 
@@ -460,7 +448,7 @@ public class CertificateIssuanceService {
 		}
 	}
 	
-	private void cleanupOldRecords(int definitionId) {
+	private void cleanupOldRecords(final int definitionId) {
 		try {
 			App.getJdbi().useTransaction(handle -> {
 				CertificateOrderDao dao = handle.attach(CertificateOrderDao.class);
@@ -475,5 +463,53 @@ public class CertificateIssuanceService {
 		} catch (Exception e) {
 			logger.warn("Failed to clean up old certificate history for definition " + definitionId, e);
 		}
-	}	
+	}
+	
+	private void runScript(final CertificateDefinition definition) {
+		try {
+			logger.info("Executing post-issuance script: " + definition.getScriptPath());
+			
+			String encoding = System.getProperty("native.encoding");
+			final Charset cs = (encoding != null) ? Charset.forName(encoding) : StandardCharsets.UTF_8;
+			
+			final Path scriptPath = Paths.get(definition.getScriptPath());
+			
+			final ProcessBuilder pb = new ProcessBuilder(scriptPath.toString(), definition.getDomainName());
+			pb.redirectErrorStream(true);
+			
+			final Path scriptDirectory = scriptPath.getParent();
+			if (scriptDirectory != null) {
+				pb.directory(scriptDirectory.toFile());
+			}
+			
+			final Process process = pb.start();
+			
+			final CompletableFuture<String> outputFuture = CompletableFuture.supplyAsync(() -> {
+				try {
+					return new String(process.getInputStream().readAllBytes(), cs);
+				} catch (IOException e) {
+					return "Error reading process stream: " + e.getMessage();
+				}
+			});
+			
+			boolean finished = process.waitFor(60, java.util.concurrent.TimeUnit.SECONDS);
+			if (finished) {
+				int exitCode = process.exitValue();
+				String output = outputFuture.join();
+				
+				if (exitCode == 0) {
+					logger.info("External script completed successfully.\nOutput:\n{}", output.trim());
+				} else {
+					logger.error("External script failed! Exit code: {}\nOutput:\n{}", exitCode, output.trim());
+				}
+			} else {
+				logger.error("External script exceeded the 60-second timeout and will be killed.");
+				process.destroy();
+				String partialOutput = outputFuture.join();
+				logger.debug("Partial output before termination:\n{}", partialOutput.trim());
+			}
+		} catch (Exception e) {
+			logger.error("Failed to execute script: " + definition.getScriptPath(), e);
+		}
+	}
 }
