@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import net.pdynet.acmemanager.App;
@@ -101,6 +102,15 @@ public class CertificatesViewController {
 			return row;
 		});
 
+		certTable.setOnKeyPressed(event -> {
+			if (event.getCode() == KeyCode.ENTER) {
+				if (certTable.getSelectionModel().getSelectedItem() != null) {
+					handleEdit();
+					event.consume();
+				}
+			}
+		});
+		
 		refreshData();
 	}
 

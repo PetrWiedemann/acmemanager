@@ -16,6 +16,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.input.KeyCode;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import net.pdynet.acmemanager.App;
@@ -50,6 +51,15 @@ public class DnsProvidersViewController {
 				}
 			});
 			return row;
+		});
+		
+		tableProviders.setOnKeyPressed(event -> {
+			if (event.getCode() == KeyCode.ENTER) {
+				if (tableProviders.getSelectionModel().getSelectedItem() != null) {
+					handleEdit();
+					event.consume();
+				}
+			}
 		});
 		
 		refreshData();
