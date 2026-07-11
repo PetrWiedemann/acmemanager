@@ -85,6 +85,11 @@ public class DefinitionEditorController {
 
 	@FXML
 	public void initialize() {
+		// Keep the masked and the revealed field in lockstep. Without this, typing into the
+		// revealed field and saving without toggling back would persist the stale (empty) value.
+		txtJksVisible.textProperty().bindBidirectional(passJks.textProperty());
+		txtWebhookPasswordVisible.textProperty().bindBidirectional(passWebhookPassword.textProperty());
+
 		cbAcmeAccount.setConverter(new StringConverter<AcmeRegistration>() {
 			@Override
 			public String toString(AcmeRegistration object) {
@@ -297,22 +302,19 @@ public class DefinitionEditorController {
 	private void togglePasswordVisibility(ActionEvent event) {
 		ToggleButton btn = (ToggleButton) event.getSource();
 		if (btn == btnShowJks) {
-			syncPassFields(passJks, txtJksVisible, btn.isSelected());
+			setPasswordRevealed(passJks, txtJksVisible, btn.isSelected());
 		} else if (btn == btnShowWebhookPass) {
-			syncPassFields(passWebhookPassword, txtWebhookPasswordVisible, btn.isSelected());
+			setPasswordRevealed(passWebhookPassword, txtWebhookPasswordVisible, btn.isSelected());
 		}
 	}
 
-	private void syncPassFields(PasswordField pass, TextField txt, boolean show) {
-		if (show) {
-			txt.setText(pass.getText());
-			txt.setVisible(true);
-			pass.setVisible(false);
-		} else {
-			pass.setText(txt.getText());
-			pass.setVisible(true);
-			txt.setVisible(false);
-		}
+	/**
+	 * Swaps which of the two bound fields is on screen. The text itself is kept in sync by the
+	 * bidirectional binding established in initialize(), so nothing is copied here.
+	 */
+	private void setPasswordRevealed(PasswordField pass, TextField txt, boolean reveal) {
+		txt.setVisible(reveal);
+		pass.setVisible(!reveal);
 	}
 
 	private boolean validateInput() {

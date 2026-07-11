@@ -20,6 +20,7 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -80,6 +81,9 @@ import tools.jackson.databind.node.ObjectNode;
 
 public class CertificateIssuanceService {
 	private static final Logger logger = LoggerFactory.getLogger(CertificateIssuanceService.class);
+
+	private static final Duration ORDER_POLL_INTERVAL = Duration.ofSeconds(3);
+	private static final Duration ORDER_POLL_TIMEOUT = Duration.ofMinutes(10);
 
 	public void fetchCertificateForDefinition(final int definitionId, final AtomicBoolean cancelToken) throws Exception {
 		// Načtení závislostí z DB
@@ -166,20 +170,10 @@ public class CertificateIssuanceService {
 				case null, default -> throw new IllegalArgumentException("Unknown challenge type.");
 			}
 		} catch (CancellationException e) {
-			now = OffsetDateTime.now();
-			certificateOrder.setStatus("CANCELLED");
-			certificateOrder.setErrorMessage("CANCELLED: Operation cancelled by user.");
-			certificateOrder.setDateEdit(now);
-			App.getJdbi().useExtension(CertificateOrderDao.class, dao -> dao.update(certificateOrder));
-			
+			failOrder(certificateOrder, "CANCELLED", "CANCELLED: Operation cancelled by user.");
 			throw e;
 		} catch (AcmeException e) {
-			now = OffsetDateTime.now();
-			certificateOrder.setStatus(Status.INVALID.toString());
-			certificateOrder.setErrorMessage(e.getMessage());
-			certificateOrder.setDateEdit(now);
-			App.getJdbi().useExtension(CertificateOrderDao.class, dao -> dao.update(certificateOrder));
-			
+			failOrder(certificateOrder, Status.INVALID.toString(), e.getMessage());
 			throw e;
 		}
 
@@ -194,8 +188,21 @@ public class CertificateIssuanceService {
 		order.execute(domainKeyPair);
 
 		// Polling statusu s updatem DB
+		final long pollDeadline = System.nanoTime() + ORDER_POLL_TIMEOUT.toNanos();
+
 		do {
-			Thread.sleep(3000L);
+			if (cancelToken.get()) {
+				failOrder(certificateOrder, "CANCELLED", "CANCELLED: Operation cancelled by user.");
+				throw new CancellationException("Operation cancelled by user.");
+			}
+
+			if (System.nanoTime() - pollDeadline >= 0) {
+				failOrder(certificateOrder, Status.INVALID.toString(),
+						"Timed out after " + ORDER_POLL_TIMEOUT.toMinutes() + " minutes waiting for the ACME order to complete.");
+				throw new AcmeException("ACME Order did not complete within " + ORDER_POLL_TIMEOUT.toMinutes() + " minutes.");
+			}
+
+			Thread.sleep(ORDER_POLL_INTERVAL.toMillis());
 			order.fetch();
 			now = OffsetDateTime.now();
 			certificateOrder.setStatus(order.getStatus().toString());
@@ -286,6 +293,16 @@ public class CertificateIssuanceService {
 		cleanupOldRecords(definition.getId());
 	}
 
+	/**
+	 * Records a terminal, unsuccessful outcome of an order so the failure survives in the history table.
+	 */
+	private void failOrder(final CertificateOrder certificateOrder, final String status, final String errorMessage) {
+		certificateOrder.setStatus(status);
+		certificateOrder.setErrorMessage(errorMessage);
+		certificateOrder.setDateEdit(OffsetDateTime.now());
+		App.getJdbi().useExtension(CertificateOrderDao.class, dao -> dao.update(certificateOrder));
+	}
+
 	private void exportToFile(final String path, final String content, final String label) {
 		if (path == null || path.isBlank() || content == null || content.isBlank())
 			return;
@@ -374,7 +391,9 @@ public class CertificateIssuanceService {
 				StringBuilder sb = new StringBuilder();
 				for (byte b : digest) sb.append(String.format("%02X", b));
 				fingerprint = sb.toString();
-			} catch (Exception e) {}
+			} catch (Exception e) {
+				logger.warn("Could not compute the SHA-256 fingerprint. Sending webhook without it.", e);
+			}
 			
 			List<String> sans = new ArrayList<>();
 			try {
@@ -384,7 +403,9 @@ public class CertificateIssuanceService {
 						sans.add(entry.get(1).toString());
 					}
 				}
-			} catch (Exception e) {}
+			} catch (Exception e) {
+				logger.warn("Could not read subject alternative names. Sending webhook without them.", e);
+			}
 			
 			String keyAlg = privateKey.getAlgorithm(); // RSA nebo EC
 			int keySize = 0;
@@ -505,6 +526,12 @@ public class CertificateIssuanceService {
 			} else {
 				logger.error("External script exceeded the 60-second timeout and will be killed.");
 				process.destroy();
+
+				if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+					logger.warn("External script ignored the termination request. Forcing shutdown.");
+					process.destroyForcibly().waitFor();
+				}
+
 				String partialOutput = outputFuture.join();
 				logger.debug("Partial output before termination:\n{}", partialOutput.trim());
 			}

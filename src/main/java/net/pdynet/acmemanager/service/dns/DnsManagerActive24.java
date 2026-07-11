@@ -31,7 +31,7 @@ public class DnsManagerActive24 implements DnsManager {
 	private final String apiKey;
 	private final String apiSecret;
 	
-	private Map<String, Long> serviceMap = null;
+	private volatile Map<String, Long> serviceMap = null;
 	private Duration timeout = Duration.ofSeconds(30);
 	private HmacUtils hmac;
 	
@@ -42,13 +42,31 @@ public class DnsManagerActive24 implements DnsManager {
 	}
 	
 	protected Long findService(final String domain) throws ApiException {
-		if (serviceMap == null)
-			populateServiceMap();
-		
-		return serviceMap.get(domain.toLowerCase());
+		return getServiceMap().get(domain.toLowerCase());
 	}
-	
-	protected void populateServiceMap() throws ApiException {
+
+	/**
+	 * Lazily fetches the service map once. The map is built in full before it is published to
+	 * {@link #serviceMap}, so a concurrent reader never observes a partially populated map.
+	 */
+	private Map<String, Long> getServiceMap() throws ApiException {
+		Map<String, Long> map = serviceMap;
+
+		if (map == null) {
+			synchronized (this) {
+				map = serviceMap;
+
+				if (map == null) {
+					map = populateServiceMap();
+					serviceMap = map;
+				}
+			}
+		}
+
+		return map;
+	}
+
+	protected Map<String, Long> populateServiceMap() throws ApiException {
 		Instant now = Instant.now();
 		String httpMethod = "GET";
 		String path = "/v1/user/self/service";
@@ -71,21 +89,22 @@ public class DnsManagerActive24 implements DnsManager {
 			
 			if (statusCode != 200)
 				throw ApiClientUtils.getApiException(path, response);
-			
-			if (serviceMap == null)
-				serviceMap = new HashMap<>();
-			
+
+			Map<String, Long> discovered = new HashMap<>();
+
 			JsonNode jsonResponse = ApiClientUtils.getJsonBody(response);
-			
+
 			StreamSupport.stream(jsonResponse.get("items").spliterator(), false)
 					.filter(node -> node.has("id") && node.has("serviceName") && node.has("name") && node.has("status")
 							&& Strings.CS.equals("domain", node.get("serviceName").asString())
 							&& Strings.CS.equals("active", node.get("status").asString()))
-					.forEach(node -> serviceMap.put(node.get("name").asString().toLowerCase(), node.get("id").asLong()))
+					.forEach(node -> discovered.put(node.get("name").asString().toLowerCase(), node.get("id").asLong()))
 					;
-			
-			logger.debug("Found services: {}", serviceMap);
-			
+
+			logger.debug("Found services: {}", discovered);
+
+			return discovered;
+
 		} catch (IOException e) {
 			throw new ApiException(e);
 		} catch (InterruptedException e) {
@@ -133,7 +152,12 @@ public class DnsManagerActive24 implements DnsManager {
 			
 			JsonNode jsonResponse = ApiClientUtils.getJsonBody(response);
 			
-			String domain = serviceMap.entrySet().stream().filter(e -> e.getValue() == serviceId).map(e -> e.getKey()).findFirst().orElseThrow();
+			String domain = getServiceMap().entrySet().stream()
+					.filter(e -> e.getValue() != null && e.getValue().longValue() == serviceId)
+					.map(Map.Entry::getKey)
+					.findFirst()
+					.orElseThrow(() -> new ApiException("No domain is mapped to Active24 service ID " + serviceId + "."));
+
 			String requiredName = recordName + "." + domain;
 			
 			Long recordId = StreamSupport.stream(jsonResponse.get("data").spliterator(), false)

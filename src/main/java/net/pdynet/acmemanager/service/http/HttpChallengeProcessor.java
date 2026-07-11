@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.shredzone.acme4j.Authorization;
@@ -27,7 +28,11 @@ import net.pdynet.acmemanager.util.ApiException;
 
 public class HttpChallengeProcessor {
 	private static final Logger logger = LoggerFactory.getLogger(HttpChallengeProcessor.class);
-	
+
+	// RFC 8555 §8.3: the token is base64url encoded. The token becomes a file name inside
+	// the webroot, so anything outside this alphabet is rejected to prevent path traversal.
+	private static final Pattern TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{1,255}$");
+
 	private final AtomicBoolean cancelToken;
 	
 	public HttpChallengeProcessor(final AtomicBoolean cancelToken) {
@@ -47,12 +52,12 @@ public class HttpChallengeProcessor {
 		Path webrootPathAcmeChallenge = null;
 		
 		try {
-			webrootPathWellknown = webrootPath.resolve(".well-known");
+			webrootPathWellknown = webrootPath.toAbsolutePath().normalize().resolve(".well-known");
 			if (!Files.isDirectory(webrootPathWellknown)) {
 				Files.createDirectory(webrootPathWellknown);
 				webrootPathWellknownCreated = true;
 			}
-			
+
 			webrootPathAcmeChallenge = webrootPathWellknown.resolve("acme-challenge");
 			if (!Files.isDirectory(webrootPathAcmeChallenge)) {
 				Files.createDirectory(webrootPathAcmeChallenge);
@@ -85,8 +90,15 @@ public class HttpChallengeProcessor {
 				
 				String token = challenge.getToken();
 				String content = challenge.getAuthorization();
-				
-				Path challengeFile = webrootPathAcmeChallenge.resolve(token);
+
+				if (token == null || !TOKEN_PATTERN.matcher(token).matches())
+					throw new AcmeException("ACME server returned a malformed HTTP-01 token for domain " + authDomain + ".");
+
+				Path challengeFile = webrootPathAcmeChallenge.resolve(token).normalize();
+
+				if (!challengeFile.startsWith(webrootPathAcmeChallenge))
+					throw new AcmeException("Refusing to write HTTP-01 challenge outside of the webroot for domain " + authDomain + ".");
+
 				Files.writeString(challengeFile, content);
 				challengeFiles.add(challengeFile);
 				challenges.add(challenge);
